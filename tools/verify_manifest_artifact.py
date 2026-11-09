@@ -32,8 +32,10 @@ def verify(
     notes_path: Path,
     expected_run_id: str,
     expected_commit_sha: str,
+    *,
+    require_gate_pass: bool = False,
 ) -> dict[str, Any]:
-    """Verify hash, run id, commit, and generated release notes."""
+    """Verify hash, run id, commit, gate verdict, and generated release notes."""
     if not manifest_path.is_file():
         raise ArtifactError(f"manifest missing: {manifest_path}")
     if not hash_path.is_file():
@@ -48,6 +50,16 @@ def verify(
     problems = validate_manifest(manifest, actions=True)
     if problems:
         raise ArtifactError("manifest validation failed: " + "; ".join(problems))
+    if require_gate_pass:
+        status = manifest.get("gate_status")
+        if status != "PASS":
+            raise ArtifactError(f"publish requires gate_status PASS, manifest has {status!r}")
+        if manifest.get("blocking_skip"):
+            raise ArtifactError("publish blocked: blocking_skip is true")
+        if float(manifest.get("skip_ratio", 0.0)) > 0.20:
+            raise ArtifactError(
+                f"publish blocked: skip_ratio {manifest.get('skip_ratio')} > 0.20"
+            )
     if str(manifest.get("ci_run_id")) != str(expected_run_id):
         raise ArtifactError(
             f"ci_run_id mismatch: manifest={manifest.get('ci_run_id')} expected={expected_run_id}"
@@ -56,8 +68,13 @@ def verify(
         raise ArtifactError(
             f"ci_commit_sha mismatch: manifest={manifest.get('ci_commit_sha')} expected={expected_commit_sha}"
         )
-    counts = manifest.get("counts", {})
-    expected_line = f"{counts.get('passed')}/{counts.get('total')}"
+    gates = manifest.get("gates")
+    if isinstance(gates, list):
+        passed_count = sum(1 for entry in gates if entry.get("status") == "PASS")
+        expected_line = f"{passed_count}/{len(gates)}"
+    else:
+        counts = manifest.get("counts", {})
+        expected_line = f"{counts.get('passed')}/{counts.get('total')}"
     match = COUNT.search(notes_path.read_text(encoding="utf-8"))
     if not match:
         raise ArtifactError("generated notes have no QUALITY_COUNTS line")
@@ -75,9 +92,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--notes", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--commit-sha", required=True)
+    parser.add_argument("--require-gate-pass", action="store_true")
     args = parser.parse_args(argv)
     try:
-        verify(Path(args.manifest), Path(args.hash), Path(args.notes), args.run_id, args.commit_sha)
+        verify(
+            Path(args.manifest),
+            Path(args.hash),
+            Path(args.notes),
+            args.run_id,
+            args.commit_sha,
+            require_gate_pass=args.require_gate_pass,
+        )
     except (ArtifactError, OSError, ValueError) as exc:
         print(f"MANIFEST_ARTIFACT_FAILED: {exc}", file=sys.stderr)
         return 1

@@ -127,12 +127,79 @@ python -m pip install -e ".[test]"
 python -m cbp.cli --root /path/to/repo --config .cbp/config.json
 ```
 
-`audit` mode reports failures but exits zero; `enforce` exits non-zero.
+Exit codes follow CONTRACT v1.7:
+
+| Code | Meaning | gate_status |
+| --- | --- | --- |
+| 0 | PASS | `PASS` |
+| 2 | input or format error | `FAIL` or `PRECONDITION_FAIL` |
+| 3 | gate failure or infrastructure failure | `FAIL` or `SKIPPED_INFRA` |
+| 4 | skip ratio above 20% | `FAIL` |
+
+`audit` and `warn` are local diagnostics: they exit 0 but print
+`CBP_MODE=… contract_exit_code=… publishable=…`, so a suppressed failure stays
+visible. Only `enforce` produces publishable evidence.
 
 ```bash
 python -m cbp.cli --root . --mode audit
-python -m cbp.cli --root . --mode enforce
+python -m cbp.cli --root . --mode enforce --report-json gate-report.json
+python -m cbp.cli --parse-report gate-report.json
+python -m cbp.cli --parse-report other-report.json --observed-exit-code 3
 ```
+
+`--parse-report` reads structured JSON only; it never greps stdout or a log. An
+exit code of 3 without a valid `gate_status` is treated as an input error (exit
+2), per CONTRACT §1.
+
+When `package_type` is `cbp`, the gates `claims`, `binary`, `encoding`, `docs`,
+and `custom` are forced: a SKIPPED forced gate is a blocking skip and exits 3.
+`skip_ratio = skip_count / applicable_gate_count`; more than 20% exits 4.
+
+Historical release bodies can be corrected without hiding the change. F4 reads
+only a body that starts with `ERRATUM:`; a section appended at the end is
+human-readable but invisible to the machine rule.
+
+```bash
+python -m cbp.cli errata --body current.md --output corrected.md --reason "..."
+python -m cbp.cli errata --body corrected.md --check
+```
+
+`cbp errata` generates and validates the body, including byte-preserving the
+original text. It never edits GitHub: the owner reviews the diff and runs
+`gh release edit <tag> --notes-file corrected.md`.
+
+### Rule packs
+
+```bash
+python -m cbp.cli --root . --rules-path rules/cbe-pack.json --rules-sha256 <hex>
+```
+
+The pack is loaded into the custom gate. A missing file, invalid JSON, a missing
+`name`/`version`/`rules`, or a hash mismatch is an input error (exit 2). The
+action exposes the same knobs as `rules-path` / `rules-sha256`.
+
+### Encoding allowlist
+
+Windows PowerShell 5.1 needs a BOM to read non-ASCII scripts. Such files can be
+exempted one path at a time, with a reason; there are no wildcards.
+
+```json
+"encoding_allowlist": [
+  {"path": "build/legacy.ps1", "reason": "Windows PowerShell 5.1 requires BOM for CJK"}
+]
+```
+
+Absolute paths, wildcards, duplicate entries, missing reasons, and entries that
+match no tracked text file are rejected. A passing run reports
+`allowlisted=N`; an allowlisted file without a BOM is reported as
+`allowlist_unused=N`.
+
+### Release asset manifest
+
+`--verify-release` reads `<root>/dist/RELEASE_ASSETS.sha256` by default. Pass
+`--release-assets PATH` when the inventory lives elsewhere; a missing file is an
+input error (exit 2). Network failures (timeouts, HTTP 5xx) are infrastructure
+failures: exit 3 with `GATE_STATUS=SKIPPED_INFRA`, and publish stays blocked.
 
 ## Configuration
 
@@ -188,10 +255,17 @@ Suggested migration:
 ```bash
 cd cbp-action
 python -m pip install -e ".[test]"
+python -m build --wheel --sdist --outdir dist
 python -m coverage run --branch --source=src/cbp,tools -m pytest -q tests
 python -m coverage json -o coverage.json
+python tools/stamp_coverage.py --root . --coverage coverage.json
+python tools/dogfood_manifest.py --root=. --coverage-json=coverage.json --output=quality-manifest.json --notes-template=docs/RELEASE_NOTES.md --notes-output=docs/RELEASE_NOTES.generated.md
 python -m cbp.cli --root . --mode enforce
 ```
+
+The build and stamp steps are mandatory: the claims gate reads
+`dist/RELEASE_BODY.md` and the wheel it names, and the coverage gate rejects an
+unstamped `coverage.json`. The repository tracks neither file.
 
 The package has no runtime dependencies outside the Python standard library.
 `pytest` and `coverage` are optional test dependencies.
@@ -326,26 +400,29 @@ python tools/stamp_coverage.py --root . --coverage coverage.json
 
 ## Release body and errata
 
-`docs/RELEASE_BODY.md` is the only accepted source for the GitHub Release body.
-The release workflow publishes it with `--notes-file` and then runs:
+The release body is generated from the built wheel by
+`tools/generate_release_body.py` during the publish job. That run uploads the
+exact body it published as the `release-body-<run_id>` artifact, and
+`clean-verify` checks the live body against that artifact, not against a file in
+the tag. This keeps the check meaningful without moving a tag to match a body
+that could only be generated after the build.
+
+`docs/RELEASE_BODY.md` mirrors the published body for readers and for local
+checks. `--verify-release` compares the live body with whatever local body you
+pass (default: `docs/RELEASE_BODY.md`) and exits non-zero on a difference:
 
 ```bash
-python -m cbp.cli --verify-release v1.0.3 --repository owner/repo
+python -m cbp.cli --verify-release v1.0.9 --repository owner/repo
 ```
-
-The command fetches the live GitHub release body and compares its normalized
-SHA256 with the checked-in file. If the body was edited in the GitHub web UI,
-it exits non-zero with:
 
 ```text
 ERRATA release body mismatch ...
 ```
 
-CBP cannot prevent an owner from editing a release on GitHub. But if you do,
-the evidence chain breaks. Always update `docs/RELEASE_BODY.md`, re-run CI, and
-publish a new tag (or a patch release). If you must edit an old release, the
-edit is only acceptable after the evidence is regenerated and checked in; a
-silent web edit is an ERRATA, not a valid update.
+CBP cannot prevent an owner from editing a release on GitHub. But if you do, the
+evidence chain breaks: record the edit as an ERRATUM in the body itself, checked
+in through `docs/RELEASE_BODY.md`, and do not silently patch it. A silent web edit
+is an ERRATA, not a valid update.
 
 This is the open-source release discipline: edits are allowed, silent edits are
 not.
@@ -379,8 +456,9 @@ See [`RELEASING.md`](RELEASING.md) for the commit -> CI -> tag -> release order.
 
 ## Status
 
-v1.0.3 is the current stable release. It does not import anything from
-the host product's `quality/`, `checks/`, or `tools/` directories.
+The current stable release is the latest entry on the GitHub Releases page. CBP
+does not import anything from the host product's `quality/`, `checks/`, or
+`tools/` directories.
 
 ### Coverage numbers in CI
 
@@ -394,9 +472,23 @@ See `docs/PYPI_TRUSTED_PUBLISHING.md`; publishing uses GitHub OIDC and does not 
 ## Benchmark platform
 
 The 6.44s 5k-file figure is Linux CI. On a Windows physical machine the same 5k run is about 30s because of filesystem `stat` overhead; this is documented and not treated as a Linux regression.
-## Prebuilt wheel
+## Action runtime wheel
 
-The action installs the checked-in `dist/cbp_action-1.0.3-py3-none-any.whl`; it does not build from source or contact the package index.
+The repository tracks no wheel, no sdist, and no `WHEEL_SHA256`. The composite
+action resolves its release tag (`cbp-version`, or the tag it was pinned to),
+downloads that release's wheel from GitHub, checks its SHA256 against the release
+asset digest reported by the GitHub API, verifies the Sigstore provenance with
+`gh attestation verify`, and only then installs it. The verified digest and path
+are exposed as the `wheel-sha256` and `wheel-path` outputs so a caller can assert
+that the wheel it ran is the wheel that was published.
+
+The action therefore needs network access to GitHub Releases and `gh` on the
+runner. It fails closed: no digest, no attestation, or a digest mismatch aborts
+the step instead of falling back to an unverified artifact. Pin the action to a
+release tag; a branch or local-path reference must pass `cbp-version` explicitly.
+
+The `build-artifact` job in `ci.yml` is the only place that runs `python -m build`.
+Every other job downloads the `cbp-dist` artifact.
 
 ## VM-only evidence
 

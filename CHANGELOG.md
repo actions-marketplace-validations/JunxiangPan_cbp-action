@@ -1,5 +1,74 @@
 # Changelog
 
+## 1.1.0 — 2026-11-09
+
+- `report_schema.py`: the six CONTRACT §3 gate statuses, the §1 exit-code table
+  (0/2/3/4), bare-64-hex hash validation, and quality-manifest v1.7 field
+  validation. `producer_id` is emitted as `cbp`; `schema_version` stays `"1"`
+  (D1: adding a field is not a structural break).
+- `report_parser.py`: structured-JSON-only parser for CBE reports, CBP manifests,
+  and CBP gate reports. Missing/invalid fields, unsupported `schema_version`, a
+  `sha256:` prefix, and an inconsistent skip ratio are input errors (exit 2). An
+  exit 3 without a valid `gate_status` is an input error, per CONTRACT §1.
+- CLI exit codes are now 0/2/3/4. `package_type: "cbp"` turns claims, binary,
+  encoding, docs, and custom into forced gates: a forced SKIPPED gate sets
+  `blocking_skip` and exits 3. More than 20% skipped exits 4. `audit`/`warn`
+  still exit 0 but print `contract_exit_code` and `publishable=false`.
+- New CLI flags: `--report-json` (writes a parseable gate report), `--parse-report`
+  (validation only), `--observed-exit-code` (F1 exit-code consistency),
+  `--rules-path` / `--rules-sha256` (CBE rule pack; missing or unparseable is
+  exit 2), and `--release-assets` (explicit asset inventory for
+  `--verify-release`).
+- Quality manifest now carries the CONTRACT v1.7 fields (`schema_version`,
+  `package_id`, `producer_id`, `version`, `gate_status`,
+  `applicable_gate_count`, `skip_count`, `skip_ratio`, `blocking_skip`,
+  `gates[]`, `artifact_hashes`, `release_body_hash`, `evidence_sha256`) plus the
+  §4 CI binding (`ci_run_id`, `ci_commit_sha`). `claims` and
+  `verify_manifest_artifact` read the gate array.
+- `--require-gate-pass`: publish fails unless the manifest is `PASS`, has no
+  blocking skip, and its skip ratio is at most 20%.
+- `SKIPPED_INFRA`: GitHub API timeouts / HTTP 5xx during `--verify-release` exit
+  3 with `GATE_STATUS=SKIPPED_INFRA`; the release body generator can render a
+  dedicated Infrastructure failures section.
+- Encoding allowlist: exact per-path BOM exemptions with a required reason and
+  visible counts (`allowlisted=N`, `allowlist_unused=N`). Wildcards, absolute
+  paths, duplicates, and stale entries are rejected.
+- `--jobs` executes in parallel again instead of being silently ignored.
+- The `ai-audit` job no longer ends with an unconditional `exit 0`: a crashing
+  gate or a missing SARIF file fails the job, while audit findings stay visible.
+- Config gains `package_type` and `encoding_allowlist`; this repository declares
+  `"package_type": "cbp"`.
+- New `cbp errata` command: prefixes a body with the machine-readable `ERRATUM:`
+  token (F4), preserves the original bytes, reports any trailing ERRATUM section
+  as human-readable only, and prints a unified diff. It never edits GitHub.
+
+## 1.0.9 — 2026-11-08
+
+- The repository tracks no wheel, sdist, or `WHEEL_SHA256`; the `build-artifact`
+  job is the only build step and a CI job rejects tracked build artifacts.
+- `action.yml` no longer installs a wheel from the repository. It downloads the
+  wheel from the release it was pinned to (`cbp-version`), compares its SHA256
+  with the release asset digest, verifies Sigstore provenance with
+  `gh attestation verify`, and only then installs it. The verified digest and
+  path are exposed as the `wheel-sha256` and `wheel-path` outputs.
+- `e2e-payload` gains a `consumer-parity` job asserting that the wheel the action
+  installed equals the release asset digest and verifies against its attestation.
+- `CONTRIBUTING.md` records two rules: verification features need a consumer-view
+  E2E assertion, and the repository never tracks build artifacts.
+- Release verification compares the live body with the body artifact produced by
+  the publishing run, so a post-release body edit is still detected without
+  moving the tag.
+- The release body generator no longer claims a byte-identical double build, a
+  Python 3.10 skip, or unfilled AI gate counts.
+
+## 1.0.8 — 2026-11-08
+
+- Build-once release pipeline: wheel is built once and shared as `cbp-dist`.
+- dogfood, dogfood-verify, release, and clean-verify consume the same artifact.
+- Python 3.10 is explicitly SKIPPED when setup-python download is unavailable.
+- AI audit results are visible in CI; ai-test self-check catches CBP-TEST-001.
+- Publish hard gate requires a green CI run whose commit matches the tag.
+
 ## 1.0.3 — 2026-11-08
 
 - `action.yml` verifies `dist/WHEEL_SHA256` before installing the wheel.

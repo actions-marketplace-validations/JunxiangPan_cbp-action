@@ -33,7 +33,7 @@ def test_missing_local_body_fails(tmp_path: Path) -> None:
 def test_cli_verify_requires_repository(monkeypatch, capsys) -> None:
     from cbp import cli
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
-    assert cli.main(["--verify-release", "v1.0.0"]) == 1
+    assert cli.main(["--verify-release", "v1.0.0"]) == 2
     assert "VERIFY_RELEASE_FAILED" in capsys.readouterr().out
 
 

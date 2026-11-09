@@ -42,7 +42,7 @@ def test_packs_only_repository_triggers_custom_gate(tmp_path: Path) -> None:
         "packs": [{"path": "pack.json", "sha256": digest}],
     }), encoding="utf-8")
     result = _run(["--root", str(tmp_path)], tmp_path)
-    assert result.returncode == 1
+    assert result.returncode == 3
     assert "custom: FAIL" in result.stdout
     assert "pack hit" in result.stdout
 
@@ -68,5 +68,5 @@ def test_claims_rejects_wrong_release_version_from_cli(tmp_path: Path) -> None:
         "enable_upgrade": False, "enable_binary": False,
     }), encoding="utf-8")
     result = _run(["--root", str(tmp_path)], tmp_path)
-    assert result.returncode == 1
+    assert result.returncode == 3
     assert "must name version 1.0.2" in result.stdout

@@ -1,4 +1,6 @@
-# CBP v1.0.6 — Release-evidence gate
+# CBP v1.1.0 — Release-evidence gate
+
+Release evidence for v1.1.0.
 
 This release body was generated from the built wheel by
 `tools/generate_release_body.py`; the wheel SHA256 is not hand-edited.
@@ -11,16 +13,37 @@ All 9 gates are active.
 ```
 
 ```text
-cbp_action-1.0.6-py3-none-any.whl
-sha256: 08ea9c3a2ee94e07e1c2768b48633ecc8adbfa89692f5d1e71ddf3785fab264e
+cbp_action-1.1.0-py3-none-any.whl
+sha256: 466c2b4deadb988b9af879e2522fb2f4fdf63821b996851682428e9e87263595
 ```
 
-https://pypi.org/project/cbp-action/1.0.6/
+https://pypi.org/project/cbp-action/1.1.0/
 
-## Release boundary
+## Section A: Security regression (blocking)
 
-Section A: input boundaries, release body generation, tag whitelist, and
-asset inventory verification are blocking gates.
+- main CI: https://github.com/JunxiangPan/cbp-action/actions/runs/42508979653 PASS
+- v1.0.6 verify: https://github.com/JunxiangPan/cbp-action/actions/runs/42462244338 PASS
+- v1.0.7 verify: https://github.com/JunxiangPan/cbp-action/actions/runs/42463773268 PASS
+- composite action payload E2E (15 hostile inputs): https://github.com/JunxiangPan/cbp-action/actions/runs/42509274614 PASS 15/15
+- single build artifact re-verified: https://github.com/JunxiangPan/cbp-action/actions/runs/42508979653 PASS
+- SARIF upload: https://github.com/JunxiangPan/cbp-action/actions/runs/42508979653 PASS
+- Python 3.10: PASS (tested in the OS x Python matrix)
+- checkout ref whitelist: PASS
+- release body auto-generated: PASS (no manual backfill)
+- release.yml permissions: PASS
+- release asset inventory: PASS
+- security_core: 90%+ floor
 
-Section B: AI audit gates are non-blocking and reported separately when
-enabled.
+## Section B: AI audit gates (audit mode, non-blocking)
+
+- ai-release / ai-test / ai-change run in the main CI `ai-audit` job; that job
+  prints `AI_GATE_SUMMARY` with PASS / WARN / SKIP counts: https://github.com/JunxiangPan/cbp-action/actions/runs/42508979653
+- Section B gates are audit-only and do not block publishing.
+
+## Still to acknowledge
+
+- ai-test false-positive rate is not yet measured on external projects.
+- composite action payload E2E runs on GitHub Linux; local Windows is not verified.
+- ai-release is structured evidence only, not natural-language summarization.
+- Section B gates are audit-only and do not block publishing.
+

@@ -4,8 +4,20 @@ inputs:
   root:
     description: Repository root
     default: "."
+  cbp-version:
+    description: >-
+      Release tag whose attested wheel this action downloads, verifies, and
+      installs (for example v1.0.9). Defaults to the tag the action was pinned
+      to; it is required when the action runs from a local path.
+    default: ""
   config:
     description: Optional CBP JSON/TOML config path (defaults to root/cbp.json)
+    default: ""
+  rules-path:
+    description: Optional CBE rule pack JSON loaded into the custom gate
+    default: ""
+  rules-sha256:
+    description: Optional expected SHA256 for the rule pack
     default: ""
   coverage-json:
     description: Path to coverage.py JSON output
@@ -85,14 +97,26 @@ outputs:
   result:
     description: PASS or FAIL
     value: ${{ steps.cbp.outputs.result }}
+  wheel-sha256:
+    description: SHA256 of the released wheel this action verified and installed
+    value: ${{ steps.cbp.outputs.wheel-sha256 }}
+  wheel-path:
+    description: Path of the released wheel this action verified and installed
+    value: ${{ steps.cbp.outputs.wheel-path }}
 runs:
   using: composite
   steps:
     - id: cbp
       shell: bash
       env:
+        GH_TOKEN: ${{ github.token }}
+        CBP_VERSION: ${{ inputs.cbp-version }}
+        ACTION_REF: ${{ github.action_ref }}
+        ACTION_REPOSITORY: ${{ github.action_repository }}
         CBP_ROOT: ${{ inputs.root }}
         CBP_CONFIG: ${{ inputs.config }}
+        CBP_RULES_PATH: ${{ inputs.rules-path }}
+        CBP_RULES_SHA256: ${{ inputs.rules-sha256 }}
         CBP_COVERAGE_JSON: ${{ inputs.coverage-json }}
         CBP_COVERAGE_ALLOWLIST: ${{ inputs.coverage-allowlist }}
         CBP_COVERAGE_SIGNATURE: ${{ inputs.coverage-signature }}
@@ -121,9 +145,56 @@ runs:
         CBP_MODE: ${{ inputs.mode }}
       run: |
         cd "${GITHUB_ACTION_PATH:?missing action path}"
-        sha256sum -c dist/WHEEL_SHA256
-        python -m pip install --no-deps "dist/cbp_action-1.0.6-py3-none-any.whl" >/dev/null
+
+        # The wheel this action runs must be the wheel this project published and
+        # attested. Never install a build artifact that merely sits in the repo.
+        REPO="${ACTION_REPOSITORY:-JunxiangPan/cbp-action}"
+        VERSION="${CBP_VERSION:-${ACTION_REF:-}}"
+        if [ -z "$VERSION" ]; then
+          echo "CBP_ACTION_FAILED reason=no-version pass cbp-version or pin the action to a release tag" >&2
+          exit 2
+        fi
+        case "$VERSION" in
+          v[0-9]*.[0-9]*.[0-9]*) ;;
+          *) echo "CBP_ACTION_FAILED reason=invalid-version version=$VERSION" >&2; exit 2 ;;
+        esac
+        command -v gh >/dev/null 2>&1 || { echo "CBP_ACTION_FAILED reason=gh-missing" >&2; exit 2; }
+
+        WHEEL_DIR="${RUNNER_TEMP:-/tmp}/cbp-wheel-$VERSION"
+        rm -rf "$WHEEL_DIR"
+        mkdir -p "$WHEEL_DIR"
+        gh release download "$VERSION" --repo "$REPO" --pattern '*.whl' --dir "$WHEEL_DIR" --clobber
+        WHEEL=$(ls "$WHEEL_DIR"/*.whl 2>/dev/null | head -n 1)
+        if [ -z "$WHEEL" ]; then
+          echo "CBP_ACTION_FAILED reason=no-wheel release=$VERSION" >&2
+          exit 2
+        fi
+
+        WHEEL_SHA=$(sha256sum "$WHEEL" | awk '{print $1}')
+        RELEASED_SHA=$(gh release view "$VERSION" --repo "$REPO" --json assets \
+          --jq ".assets[] | select(.name == \"$(basename "$WHEEL")\") | .digest" \
+          | sed -e 's/^sha256://' | tr -d '\r')
+        if [ -z "$RELEASED_SHA" ]; then
+          echo "CBP_ACTION_FAILED reason=no-release-digest file=$(basename "$WHEEL")" >&2
+          exit 2
+        fi
+        if [ "$WHEEL_SHA" != "$RELEASED_SHA" ]; then
+          echo "CBP_ACTION_FAILED reason=wheel-digest-mismatch installed=$WHEEL_SHA released=$RELEASED_SHA" >&2
+          exit 3
+        fi
+
+        if ! gh attestation verify "$WHEEL" --repo "$REPO" >/dev/null 2>&1; then
+          echo "CBP_ACTION_FAILED reason=attestation-verify file=$(basename "$WHEEL")" >&2
+          exit 4
+        fi
+
+        python -m pip install --no-deps "$WHEEL" >/dev/null
+        echo "wheel-sha256=$WHEEL_SHA" >> "$GITHUB_OUTPUT"
+        echo "wheel-path=$WHEEL" >> "$GITHUB_OUTPUT"
         set +e
+        EXTRA=()
+        if [ -n "$CBP_RULES_PATH" ]; then EXTRA+=(--rules-path "$CBP_RULES_PATH"); fi
+        if [ -n "$CBP_RULES_SHA256" ]; then EXTRA+=(--rules-sha256 "$CBP_RULES_SHA256"); fi
         OUTPUT=$(python -m cbp.cli \
           --root "$CBP_ROOT" \
           --config "$CBP_CONFIG" \
@@ -152,7 +223,8 @@ runs:
           --enable-claims "$CBP_ENABLE_CLAIMS" \
           --enable-custom "$CBP_ENABLE_CUSTOM" \
           --enable-upgrade "$CBP_ENABLE_UPGRADE" \
-          --mode "$CBP_MODE" 2>&1)
+          --mode "$CBP_MODE" \
+          "${EXTRA[@]}" 2>&1)
         CODE=$?
         echo "$OUTPUT"
         echo "$OUTPUT" | grep -E '^CBP_RESULT=' | tail -1 >> "$GITHUB_OUTPUT"

@@ -82,8 +82,15 @@ def _detect(cfg: GateConfig) -> tuple[bool, str]:
     if not notes.is_file():
         return False, "release notes missing. Run the dogfood command first to generate them."  # pragma: no cover - defensive/error branch
     data = json.loads(manifest.read_text(encoding="utf-8"))
-    counts = data.get("counts", {})
-    expected = f"{counts.get('passed', -1)}/{counts.get('total', -1)}"
+    gates = data.get("gates")
+    if isinstance(gates, list):
+        passed_count = sum(1 for entry in gates if entry.get("status") == "PASS")
+        total = len(gates)
+        expected = f"{passed_count}/{total}"
+    else:
+        counts = data.get("counts", {})
+        expected = f"{counts.get('passed', -1)}/{counts.get('total', -1)}"
+        total = int(counts.get("total", -1))
     text = notes.read_text(encoding="utf-8")
     tokens = TOKEN.findall(text)
     if len(tokens) != 1:
@@ -91,7 +98,6 @@ def _detect(cfg: GateConfig) -> tuple[bool, str]:
     actual = f"{tokens[0][0]}/{tokens[0][1]}"
     if actual != expected:
         return False, f"notes {actual} != manifest {expected}"
-    total = int(counts.get("total", -1))
     gate_problem = _gate_number(text, total, required=False)
     if gate_problem:
         return False, gate_problem

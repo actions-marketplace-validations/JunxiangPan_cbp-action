@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 
@@ -9,11 +10,35 @@ class ReportError(ValueError):
     """Raised when an external report cannot be normalized."""
 
 
+_UNSAFE = re.compile(r"[^A-Za-z0-9]+")
+_FOREIGN_PREFIXES = ("CBE-", "CBS-", "CBM-", "CBC-", "CBG-")
+
+
+def _namespaced_rule(tool: str, rule: str) -> str:
+    """CONTRACT §6: CBP output may carry only CBP-* rule IDs.
+
+    A foreign or native ID is mapped, never emitted verbatim. The original ID is
+    kept in ``origin_rule`` for traceability.
+    """
+    value = (rule or "").strip()
+    if value.startswith("CBP-"):
+        return value
+    for prefix in _FOREIGN_PREFIXES:
+        if value.upper().startswith(prefix):
+            value = value[len(prefix):]
+            break
+    slug = _UNSAFE.sub("-", value).strip("-").upper()
+    if not slug:
+        slug = _UNSAFE.sub("-", tool or "unknown").strip("-").upper() or "UNKNOWN"
+    return ("CBP-EXT-" + slug)[:80]
+
+
 def _finding(tool: str, rule: str, path: str, line: int, message: str, severity: str) -> dict:
     return {
         "path": path.replace("\\", "/"),
         "line": max(1, int(line or 1)),
-        "rule": rule or "CBP-EXT-001",
+        "rule": _namespaced_rule(tool, rule),
+        "origin_rule": rule or "",
         "message": message or rule,
         "severity": severity or "warning",
         "tool": tool,

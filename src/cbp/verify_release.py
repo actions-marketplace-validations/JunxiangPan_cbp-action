@@ -17,6 +17,17 @@ def _sha(data: str) -> str:
     return hashlib.sha256(_canonical(data)).hexdigest()
 
 
+from . import report_schema
+
+
+def _api_error(status: int, repository: str, tag: str) -> Exception:
+    """Classify an HTTP status: 5xx is infrastructure, 4xx is an input/gate error."""
+    message = f"GitHub API HTTP {status} for {repository}@{tag}"
+    if status >= 500:
+        return report_schema.InfraError(message)
+    return RuntimeError(message)
+
+
 def fetch_release_body(repository: str, tag: str, token: str | None = None) -> str:
     """Fetch a release body from the GitHub REST API."""
     url = f"https://api.github.com/repos/{repository}/releases/tags/{tag}"
@@ -33,9 +44,9 @@ def fetch_release_body(repository: str, tag: str, token: str | None = None) -> s
 
         response = requests.get(url, headers=headers, timeout=30, verify=certifi.where())
         if response.status_code >= 400:
-            raise RuntimeError(f"GitHub API HTTP {response.status_code} for {repository}@{tag}")
+            raise _api_error(response.status_code, repository, tag)
         payload = response.json()
-    except RuntimeError:
+    except (RuntimeError, report_schema.InfraError):
         raise
     except ImportError:
         import ssl
@@ -50,11 +61,11 @@ def fetch_release_body(repository: str, tag: str, token: str | None = None) -> s
             with urllib.request.urlopen(request, timeout=30, context=context) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            raise RuntimeError(f"GitHub API HTTP {exc.code} for {repository}@{tag}") from exc
+            raise _api_error(exc.code, repository, tag) from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(f"GitHub API unavailable: {exc.reason}") from exc
+            raise report_schema.InfraError(f"GitHub API unavailable: {exc.reason}") from exc
     except Exception as exc:
-        raise RuntimeError(f"GitHub API unavailable: {exc}") from exc
+        raise report_schema.InfraError(f"GitHub API unavailable: {exc}") from exc
     body = payload.get("body")
     if not isinstance(body, str):
         raise RuntimeError("GitHub release body is missing or is not a string")
@@ -68,6 +79,8 @@ def verify(repository: str, tag: str, local_body: Path, token: str | None = None
     local = local_body.read_text(encoding="utf-8")
     try:
         remote = fetch_release_body(repository, tag, token)
+    except report_schema.InfraError:
+        raise
     except RuntimeError as exc:
         return False, f"ERRATA cannot fetch release: {exc}"
     local_sha = _sha(local)

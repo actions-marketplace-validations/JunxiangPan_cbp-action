@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "1.0.6"
+SCHEMA_VERSION = "1.0.8"
 LEGACY_FIELDS = {
     "installer_core": "install_command",
     "broker_files": "target_files",
@@ -22,6 +22,7 @@ LEGACY_FIELDS = {
 class GateConfig:
     """Inputs and thresholds for one CBP audit run."""
     root: Path
+    package_type: str = ""
     schema_version: str = SCHEMA_VERSION
     coverage_json: Path | str = ""
     coverage_allowlist: Path | str = ""
@@ -57,6 +58,7 @@ class GateConfig:
     package_zip: Path | None = None
     enable_coverage: bool = True
     enable_encoding: bool = True
+    encoding_allowlist: tuple[dict, ...] = ()
     enable_dependency: bool = True
     enable_comments: bool = True
     enable_docs: bool = True

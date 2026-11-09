@@ -12,6 +12,9 @@ on:
         description: Explicitly allow unresolved GitHub placeholder strings
         type: boolean
         default: false
+      e2e_run_id:
+        description: e2e-payload run id that proved the hostile-input cases
+        required: false
 jobs:
   verify-artifact:
     runs-on: ubuntu-latest
@@ -19,6 +22,14 @@ jobs:
       contents: read
       actions: read
     steps:
+      - name: Require green main CI before publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+        run: |
+          case "$CI_RUN_ID" in (*[!0-9]*|'') echo "invalid ci_run_id" >&2; exit 2;; esac
+          STATUS=$(gh api "repos/${{ github.repository }}/actions/runs/$CI_RUN_ID" --jq .conclusion)
+          test "$STATUS" = "success" || { echo "CI run $CI_RUN_ID is $STATUS, refusing publish" >&2; exit 3; }
       - name: Reject placeholder bypass in GitHub Actions
         if: ${{ inputs.allow_placeholders == true }}
         run: |
@@ -38,8 +49,22 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - run: python -m pip install -e ".[test]"
+      - name: Require the CI run commit to be the tag commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          TAG_COMMIT=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          CI_COMMIT=$(gh api "repos/${{ github.repository }}/actions/runs/$CI_RUN_ID" --jq .head_sha)
+          echo "tag_commit=$TAG_COMMIT"
+          echo "ci_commit=$CI_COMMIT"
+          test "$TAG_COMMIT" = "$CI_COMMIT" || {
+            echo "TAG != CI COMMIT: tag $RELEASE_TAG points at $TAG_COMMIT but CI run $CI_RUN_ID was built at $CI_COMMIT" >&2
+            exit 3
+          }
       - name: Download manifest artifact by explicit run id
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,14 +75,9 @@ jobs:
       - name: Verify manifest hash, run id, commit, and notes
         env:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          python tools/verify_manifest_artifact.py --manifest=artifact/quality-manifest.json --hash=artifact/quality-manifest.json.sha256 --notes=artifact/docs/RELEASE_NOTES.generated.md --run-id="$CI_RUN_ID" --commit-sha="$(git rev-parse HEAD)"
-      - name: Required artifact integrity gate
-        if: inputs.package-zip != ''
-        env:
-          PACKAGE_ZIP: ${{ inputs.package-zip }}
-        run: |
-          python -m cbp.cli --root "$GITHUB_WORKSPACE" --package-zip "$PACKAGE_ZIP" --mode enforce
+          python tools/verify_manifest_artifact.py --manifest=artifact/quality-manifest.json --hash=artifact/quality-manifest.json.sha256 --notes=artifact/docs/RELEASE_NOTES.generated.md --run-id="$CI_RUN_ID" --commit-sha="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" --require-gate-pass
       - name: Check Action metadata files
         run: |
           pwd
@@ -92,11 +112,15 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.10"
-      - run: python -m pip install --upgrade build
-      - run: python -m build
-      - name: Normalize wheel for reproducible builds
-        run: python tools/normalize_wheel.py dist/*.whl
+          python-version: "3.12"
+      - name: Download the single build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+        run: |
+          rm -rf dist
+          gh run download "$CI_RUN_ID" -n cbp-dist -D dist
+          (cd dist && sha256sum -c WHEEL_SHA256)
       - name: Install built CBP wheel
         run: |
           python -m pip install --force-reinstall --no-deps dist/*.whl
@@ -117,12 +141,27 @@ jobs:
       - name: Generate release body from built wheel
         env:
           RELEASE_VERSION: ${{ inputs.release_tag }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          E2E_RUN_ID: ${{ inputs.e2e_run_id }}
         run: |
-          python tools/generate_release_body.py --wheel dist/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output dist/RELEASE_BODY.md
+          python tools/generate_release_body.py --wheel dist/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output dist/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID"
       - name: Generate release asset manifest
         run: |
           cd dist
           sha256sum *.whl *.tar.gz ../artifact/quality-manifest.json ../artifact/quality-manifest.json.sha256 ../artifact/docs/RELEASE_NOTES.generated.md | awk '{n=$2; sub(/.*\//,"",n); print $1 " *" n}' > RELEASE_ASSETS.sha256
+      - name: Upload the release body used for publishing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-body-${{ github.run_id }}
+          path: dist/RELEASE_BODY.md
+          if-no-files-found: error
+      - name: AI release gate before publish
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          mkdir -p docs dist
+          cp artifact/docs/RELEASE_NOTES.generated.md docs/RELEASE_NOTES.generated.md
+          python -m cbp.cli --gate ai-release --tag "$RELEASE_TAG" --release-body dist/RELEASE_BODY.md --mode enforce
       - name: Publish release from the generated notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -136,7 +175,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          python -m cbp.cli --root "$GITHUB_WORKSPACE" --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+          python -m cbp.cli --root "$GITHUB_WORKSPACE" --release-body dist/RELEASE_BODY.md --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
 
   clean-verify:
     needs: publish
@@ -157,10 +196,22 @@ jobs:
           ref: refs/tags/${{ inputs.release_tag }}
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.10"
-      - name: Install the released wheel on a clean runner
+          python-version: "3.12"
+      - name: Download the single build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
         run: |
-          python -m pip install --no-deps "dist/*.whl" 2>/dev/null || python -m pip install .
+          rm -rf dist-verify
+          gh run download "$CI_RUN_ID" -n cbp-dist -D dist-verify
+          (cd dist-verify && sha256sum -c WHEEL_SHA256)
+      - name: Install the released wheel on a clean runner
+        run: python -m pip install --no-deps dist-verify/*.whl
+      - name: Download the body this run published
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-body-${{ github.run_id }}
+          path: dist
       - name: Download asset manifest and verify body + assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -169,4 +220,4 @@ jobs:
           case "$RELEASE_TAG" in (v[0-9]*.[0-9]*.[0-9]*) ;; (*) echo "invalid release_tag" >&2; exit 2;; esac
           mkdir -p dist
           gh release download "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" -p RELEASE_ASSETS.sha256 -D dist --clobber
-          python -m cbp.cli --root "$GITHUB_WORKSPACE" --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+          python -m cbp.cli --root "$GITHUB_WORKSPACE" --release-body dist/RELEASE_BODY.md --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"

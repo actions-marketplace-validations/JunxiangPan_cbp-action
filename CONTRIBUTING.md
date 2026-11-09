@@ -12,12 +12,50 @@
 - Keep runtime dependencies at zero unless a gate truly requires a library.
 - Every public function or class needs a docstring and accurate parameter names.
 
+## Consumer-view assertions (mandatory for verification features)
+
+A verification feature is not done when the mechanism exists. It is done when an
+end-to-end test proves that what the consumer receives *is* what was verified.
+Testing that a function returns `True` on a fixture is not enough: the test must
+assert that the bytes the consumer runs are the bytes that were proved.
+
+Every change to a verification feature must ship an E2E assertion of that shape.
+`e2e-payload` holds the canonical example: the composite action installs a wheel
+and the `consumer-parity` job asserts that the installed wheel's SHA256 equals the
+release asset digest and passes `gh attestation verify`.
+
+Four releases shipped a verification mechanism that no consumer-view assertion
+covered:
+
+| Version | Claimed | Actual | Missing assertion |
+|---|---|---|---|
+| v0.1.3 | coverage signature | no key, forgeable | "signature is unforgeable" E2E |
+| v1.0.2 | wheel hash | nobody read the file | "the hash is read" E2E |
+| v1.0.3 | asset inventory check | nobody generated the inventory | "missing inventory must FAIL" E2E |
+| v1.0.8 | `sha256sum -c` + OIDC | it checked the same tree it ran from | "executed == attested" E2E |
+
+If that assertion had existed three weeks ago, none of the first three would have
+shipped.
+
+## No build artifacts in the repository
+
+The repository must not track a wheel, an sdist, `WHEEL_SHA256`, or
+`coverage.json`. The `cbp-dist` artifact produced by the `build-artifact` job is
+the only build output: every other job downloads it, and the composite action
+downloads the released, attested wheel at runtime. `git ls-files dist` must be
+empty, and a test enforces it. Local builds go to the gitignored `dist/`;
+`coverage.json` embeds the commit fingerprint, so it is regenerated locally and
+in CI instead of being committed.
+
 ## Local checks
 
 ```bash
 python -m pip install -e ".[test]"
+python -m build --wheel --sdist --outdir dist
 python -m coverage run --branch -m pytest -q tests
 python -m coverage json -o coverage.json
+python tools/stamp_coverage.py --root . --coverage coverage.json
+python tools/dogfood_manifest.py --root=. --coverage-json=coverage.json --output=quality-manifest.json --notes-template=docs/RELEASE_NOTES.md --notes-output=docs/RELEASE_NOTES.generated.md
 python -m cbp.cli --root . --mode enforce
 ```
 
@@ -46,8 +84,11 @@ gates:
 
 ```bash
 python -m pip install -e ".[test]"
+python -m build --wheel --sdist --outdir dist
 python -m coverage run --branch -m pytest -q tests
 python -m coverage json -o coverage.json
+python tools/stamp_coverage.py --root . --coverage coverage.json
+python tools/dogfood_manifest.py --root=. --coverage-json=coverage.json --output=quality-manifest.json --notes-template=docs/RELEASE_NOTES.md --notes-output=docs/RELEASE_NOTES.generated.md
 python -m cbp.cli --root . --mode enforce
 python tools/audit_rule_sources.py --root .
 ```

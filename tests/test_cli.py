@@ -41,7 +41,7 @@ def test_cli_enforce_success(tmp_path, capsys) -> None:
 
 def test_cli_enforce_failure(tmp_path) -> None:
     config = _fixture(tmp_path, percent=50.0)
-    assert cli.main(["--root", str(tmp_path), "--config", config]) == 1
+    assert cli.main(["--root", str(tmp_path), "--config", config]) == 3
 
 
 def test_cli_warn_and_audit_do_not_block(tmp_path) -> None:

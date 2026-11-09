@@ -97,3 +97,9 @@ pinning, ReDoS limits, or architecture changes.
 - security_core coverage floor: 90.0.
 - SARIF 2.1.0 output for GitHub Code Scanning.
 - Release asset inventory verification.
+
+## v1.0.8 recovery
+
+- Restore Python 3.10 CI coverage after the setup-python 504 workaround.
+- Make dogfood consume an explicitly published wheel artifact instead of local dist.
+- Add double-build, SARIF, and 15-case E2E links to generated release body.
