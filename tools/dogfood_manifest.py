@@ -135,7 +135,16 @@ def _manifest_document(
     gates: list[dict[str, Any]],
     artifact_hashes: dict[str, str],
     release_body_hash: str,
+    body_hash_scope: str = "base",
+    artifact_repository: str = "",
 ) -> dict[str, Any]:
+    if body_hash_scope not in report_schema.BODY_HASH_SCOPES:
+        raise ManifestError(
+            "unsupported body_hash_scope: "
+            + repr(body_hash_scope)
+            + "; supported: "
+            + ", ".join(report_schema.BODY_HASH_SCOPES)
+        )
     applicable = len(report_schema.ALL_GATES)
     skip_count = sum(1 for entry in gates if entry["status"] == "SKIPPED")
     blocking = any(
@@ -155,11 +164,13 @@ def _manifest_document(
         "gates": gates,
         "artifact_hashes": artifact_hashes,
         "release_body_hash": release_body_hash,
+        "body_hash_scope": body_hash_scope,
         "evidence_sha256": "0" * 64,
         "ci_run_id": run_id,
         "ci_commit_sha": commit_sha,
         "generated_at": _now(),
         "generated_by": GENERATED_BY,
+        **({"artifact_repository": artifact_repository} if artifact_repository else {}),
     }
 
 
@@ -186,10 +197,24 @@ def generate(
     notes_output: Path | None = None,
     run_id: str | None = None,
     commit_sha: str | None = None,
+    body_hash_scope: str = "base",
+    artifact_repository: str = "",
 ) -> dict[str, Any]:
     """Run all gates, write the manifest and generated release notes."""
     root = root.resolve()
+    if body_hash_scope not in report_schema.BODY_HASH_SCOPES:
+        raise ManifestError(
+            "unsupported body_hash_scope: "
+            + repr(body_hash_scope)
+            + "; supported: "
+            + ", ".join(report_schema.BODY_HASH_SCOPES)
+        )
     cfg = load_config(root, root / "cbp.json")
+    if not artifact_repository:
+        artifact_repository = (
+            str(getattr(cfg, "artifact_repository", "") or "")
+            or os.environ.get("GITHUB_REPOSITORY", "")
+        )
     if coverage_json is not None:
         cfg.coverage_json = coverage_json
     coverage_path = cfg.path(cfg.coverage_json)
@@ -228,6 +253,8 @@ def generate(
         ],
         artifact_hashes={},
         release_body_hash="0" * 64,
+        body_hash_scope=body_hash_scope,
+        artifact_repository=artifact_repository,
     )
     _write_manifest(output, provisional)
     _write_notes(notes_template, notes_output, "8/9", gate_count=9)
@@ -259,6 +286,8 @@ def generate(
         gates=[_gate_entry(name, statuses.get(name, "SKIPPED")) for name in report_schema.ALL_GATES],
         artifact_hashes=artifact_hashes,
         release_body_hash=release_body_hash,
+        body_hash_scope=body_hash_scope,
+        artifact_repository=artifact_repository,
     )
     final_manifest["evidence_sha256"] = _canonical_sha(
         {key: value for key, value in final_manifest.items() if key != "evidence_sha256"}
@@ -285,6 +314,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--notes-output", default="")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--commit-sha", default="")
+    parser.add_argument("--body-hash-scope", default="base")
+    parser.add_argument("--artifact-repository", default="")
     args = parser.parse_args(argv)
     try:
         manifest = generate(
@@ -295,6 +326,8 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.notes_output) if args.notes_output else None,
             args.run_id,
             args.commit_sha,
+            body_hash_scope=args.body_hash_scope,
+            artifact_repository=args.artifact_repository,
         )
     except ManifestError as exc:
         print(f"DOGFOOD_MANIFEST_FAILED: {exc}", file=sys.stderr)

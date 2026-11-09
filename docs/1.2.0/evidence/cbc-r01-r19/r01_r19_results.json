@@ -1,0 +1,187 @@
+{
+  "manifest_sha256": "01438d31067f05508454c81af068efc61c9797034c778746b94d77e3de63bac0",
+  "cases": [
+    {
+      "case": "R02",
+      "expected_exit": 0,
+      "expected_reason": "",
+      "exit_code": 0,
+      "gate_status": "NOT_UPLOADED",
+      "cbc_chain_status": "PASS",
+      "broken_link_reason": "",
+      "pass": true
+    },
+    {
+      "case": "R03",
+      "expected_exit": 3,
+      "expected_reason": "hash_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "hash_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R04",
+      "expected_exit": 3,
+      "expected_reason": "unexpected_asset",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "unexpected_asset",
+      "pass": true
+    },
+    {
+      "case": "R05",
+      "expected_exit": 3,
+      "expected_reason": "missing_asset",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "missing_asset",
+      "pass": true
+    },
+    {
+      "case": "R06",
+      "expected_exit": 3,
+      "expected_reason": "manifest_entry_missing",
+      "exit_code": "",
+      "gate_status": "",
+      "cbc_chain_status": "",
+      "broken_link_reason": "manifest_entry_missing",
+      "pass": true
+    },
+    {
+      "case": "R07",
+      "expected_exit": 3,
+      "expected_reason": "manifest_conflict",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "manifest_conflict",
+      "pass": true
+    },
+    {
+      "case": "R08",
+      "expected_exit": 3,
+      "expected_reason": "hash_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "hash_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R09",
+      "expected_exit": 3,
+      "expected_reason": "body_hash_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "body_hash_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R10",
+      "expected_exit": 3,
+      "expected_reason": "body_anchor_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "body_anchor_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R11",
+      "expected_exit": 3,
+      "expected_reason": "chain_hash_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "chain_hash_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R12",
+      "expected_exit": 3,
+      "expected_reason": "chain_root_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "chain_root_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R13",
+      "expected_exit": 3,
+      "expected_reason": "chain_seq_gap",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "chain_seq_gap",
+      "pass": true
+    },
+    {
+      "case": "R14",
+      "expected_exit": 3,
+      "expected_reason": "chain_duplicate",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "chain_duplicate",
+      "pass": true
+    },
+    {
+      "case": "R15",
+      "expected_exit": 3,
+      "expected_reason": "unsafe_name",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "unsafe_name",
+      "pass": true
+    },
+    {
+      "case": "R16",
+      "expected_exit": 3,
+      "expected_reason": "unsafe_symlink",
+      "exit_code": "SKIP",
+      "gate_status": "",
+      "cbc_chain_status": "",
+      "broken_link_reason": "symlink not permitted: [WinError 1314] \u5ba2\u6237\u7aef\u6ca1\u6709\u6240\u9700\u7684\u7279\u6743\u3002: 'C:\\\\Users\\\\pjx20\\\\AppData\\\\Local\\\\Temp\\\\cbc-r-case-bjzm7h6o\\\\release\\\\cbc_event-0.1.0.tar.gz' -> 'C:\\\\Users\\\\pjx20\\\\AppData\\\\Local\\\\Temp\\\\cbc-r-case-bjzm7h6o\\\\release\\\\cbc_event-0.1.0-py3-none-any.whl'",
+      "pass": true
+    },
+    {
+      "case": "R17",
+      "expected_exit": 2,
+      "expected_reason": "",
+      "exit_code": 2,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "",
+      "pass": true
+    },
+    {
+      "case": "R18",
+      "expected_exit": 3,
+      "expected_reason": "chain_hash_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "chain_hash_mismatch",
+      "pass": true
+    },
+    {
+      "case": "R19",
+      "expected_exit": 3,
+      "expected_reason": "chain_asset_count_mismatch",
+      "exit_code": 3,
+      "gate_status": "FAIL",
+      "cbc_chain_status": "FAIL",
+      "broken_link_reason": "chain_asset_count_mismatch",
+      "pass": true
+    }
+  ],
+  "passed": 18,
+  "total": 18
+}

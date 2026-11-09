@@ -117,8 +117,8 @@
   "coverage_ratchet": "coverage-ratchet.json",
   "rules_manifest": "rules/rules.sha256",
   "rules_changelog_manifest": "rules/changelog.sha256",
-  "release_version": "1.1.0",
-  "release_artifact": "dist/cbp_action-1.1.0-py3-none-any.whl",
+  "release_version": "1.2.0",
+  "release_artifact": "dist/cbp_action-1.2.0-py3-none-any.whl",
   "package_type": "cbp",
   "pypi_project": "cbp-action"
 }

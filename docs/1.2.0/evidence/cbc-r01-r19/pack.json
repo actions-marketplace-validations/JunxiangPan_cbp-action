@@ -1,0 +1,31 @@
+{
+  "schema_version": "1",
+  "pack_id": "cbc-e2e",
+  "pack_version": "0.1.0",
+  "description": "Minimal CBE rule pack used only to produce a real CBE \u00a75 report for CBC during the CBP R01-R19 feasibility run.",
+  "package_types": [
+    "cbc"
+  ],
+  "providers": {
+    "builtin-manifest": {
+      "kind": "builtin",
+      "output_formats": [
+        "json"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "rule_id": "CBE-CBC-001",
+      "title": "CBC package metadata is present",
+      "description": "Minimal builtin advisory used only to produce a real CBE report for CBC.",
+      "severity": "warning",
+      "gate": "advisory",
+      "provider": "builtin-manifest",
+      "version_constraint": "*",
+      "package_types": [
+        "cbc"
+      ]
+    }
+  ]
+}

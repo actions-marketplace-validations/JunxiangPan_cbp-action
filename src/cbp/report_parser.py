@@ -60,7 +60,11 @@ GATE_REPORT_REQUIRED_FIELDS = (
     "blocking_skip",
     "gates",
 )
-GATE_REPORT_ALLOWED_FIELDS = frozenset(GATE_REPORT_REQUIRED_FIELDS)
+GATE_REPORT_ALLOWED_FIELDS = frozenset(GATE_REPORT_REQUIRED_FIELDS) | {
+    "body_hash_scope",
+    "artifact_repository",
+    "package_type",
+}
 
 
 @dataclass(frozen=True)
@@ -80,6 +84,8 @@ class ParsedReport:
     skip_ratio: float
     blocking_skip: bool
     tag: str = ""
+    body_hash_scope: str = ""
+    artifact_repository: str = ""
     gates: tuple[dict[str, Any], ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, Any]:
@@ -97,11 +103,19 @@ class ParsedReport:
             "skip_count": self.skip_count,
             "skip_ratio": self.skip_ratio,
             "blocking_skip": self.blocking_skip,
+            "body_hash_scope": self.body_hash_scope,
+            "artifact_repository": self.artifact_repository,
             "gates": list(self.gates),
         }
 
 
-def parse_report(path: Path, *, observed_exit_code: int | None = None) -> ParsedReport:
+def parse_report(
+    path: Path,
+    *,
+    observed_exit_code: int | None = None,
+    require_body_scope: bool = False,
+    expected_repository: str = "",
+) -> ParsedReport:
     """Read and validate one report file. Raises ``ReportError`` on failure."""
     try:
         raw = path.read_text(encoding="utf-8")
@@ -113,7 +127,13 @@ def parse_report(path: Path, *, observed_exit_code: int | None = None) -> Parsed
         data = json.loads(raw)
     except ValueError as exc:
         raise ReportError(f"report is not valid JSON: {path}: {exc}") from exc
-    return parse_report_data(data, source=str(path), observed_exit_code=observed_exit_code)
+    return parse_report_data(
+        data,
+        source=str(path),
+        observed_exit_code=observed_exit_code,
+        require_body_scope=require_body_scope,
+        expected_repository=expected_repository,
+    )
 
 
 def parse_report_data(
@@ -121,6 +141,8 @@ def parse_report_data(
     *,
     source: str = "<memory>",
     observed_exit_code: int | None = None,
+    require_body_scope: bool = False,
+    expected_repository: str = "",
 ) -> ParsedReport:
     """Validate an already-decoded report object."""
     if not isinstance(data, dict):
@@ -129,8 +151,16 @@ def parse_report_data(
     if kind == "cbe-report":
         return _parse_cbe(data, source, observed_exit_code)
     if kind == "cbp-gate-report":
-        return _parse_gate_report(data, source, observed_exit_code)
-    return _parse_manifest(data, source, observed_exit_code)
+        return _parse_gate_report(
+            data, source, observed_exit_code,
+            require_body_scope=require_body_scope,
+            expected_repository=expected_repository,
+        )
+    return _parse_manifest(
+        data, source, observed_exit_code,
+        require_body_scope=require_body_scope,
+        expected_repository=expected_repository,
+    )
 
 
 def _detect_kind(data: dict[str, Any], source: str) -> str:
@@ -261,7 +291,40 @@ def _parse_cbe(data: dict[str, Any], source: str, observed: int | None) -> Parse
     )
 
 
-def _parse_gate_report(data: dict[str, Any], source: str, observed: int | None) -> ParsedReport:
+def _scope_repository_problems(
+    data: dict[str, Any],
+    source: str,
+    *,
+    require_body_scope: bool,
+    expected_repository: str,
+) -> list[str]:
+    problems: list[str] = []
+    if "body_hash_scope" in data:
+        problem = schema.body_hash_scope_problem(data["body_hash_scope"])
+        if problem:
+            problems.append(problem)
+    elif require_body_scope:
+        problems.append("body_hash_scope: required field is missing")
+    repository = data.get("artifact_repository")
+    if "artifact_repository" in data:
+        if not isinstance(repository, str) or not repository:
+            problems.append("artifact_repository: a non-empty string is required")
+        elif expected_repository and repository != expected_repository:
+            problems.append(
+                f"artifact_repository: {repository!r} != expected {expected_repository!r} "
+                "(cross-repository artifact)"
+            )
+    return problems
+
+
+def _parse_gate_report(
+    data: dict[str, Any],
+    source: str,
+    observed: int | None,
+    *,
+    require_body_scope: bool = False,
+    expected_repository: str = "",
+) -> ParsedReport:
     _precheck_exit(data, source, observed)
     _require_fields(data, GATE_REPORT_REQUIRED_FIELDS, GATE_REPORT_ALLOWED_FIELDS, source)
     problem = schema.schema_version_problem(data["schema_version"])
@@ -271,6 +334,13 @@ def _parse_gate_report(data: dict[str, Any], source: str, observed: int | None) 
         raise ReportError(f"{source}: producer_id must be {schema.PRODUCER_ID!r}")
     if not isinstance(data["version"], str) or not schema.VERSION_PATTERN.fullmatch(data["version"]):
         raise ReportError(f"{source}: version must look like vX.Y.Z")
+    scope_problems = _scope_repository_problems(
+        data, source,
+        require_body_scope=require_body_scope,
+        expected_repository=expected_repository,
+    )
+    if scope_problems:
+        raise ReportError(f"{source}: " + "; ".join(scope_problems))
     status = _required_status(data, source, data.get("exit_code"))
     exit_code = _check_exit(data, status, source, observed)
     applicable, skip, ratio = _require_ratio(
@@ -281,14 +351,17 @@ def _parse_gate_report(data: dict[str, Any], source: str, observed: int | None) 
     problems = schema.gate_entries_problems(data["gates"])
     if problems:
         raise ReportError(f"{source}: " + "; ".join(problems))
-    forced = schema.forced_skip_names(data["gates"])
-    if forced and not data["blocking_skip"]:
-        raise ReportError(
-            f"{source}: blocking_skip must be true when forced gate(s) are SKIPPED: "
-            + ", ".join(sorted(forced))
-        )
-    if data["blocking_skip"] and not forced:
-        raise ReportError(f"{source}: blocking_skip is true but no forced gate is SKIPPED")
+    # The forced-gate rule applies to a CBP package_type run. A consumer run may
+    # leave those gates unconfigured (SKIPPED) without a blocking skip.
+    if data.get("package_type") == schema.PACKAGE_ID:
+        forced = schema.forced_skip_names(data["gates"])
+        if forced and not data["blocking_skip"]:
+            raise ReportError(
+                f"{source}: blocking_skip must be true when forced gate(s) are SKIPPED: "
+                + ", ".join(sorted(forced))
+            )
+        if data["blocking_skip"] and not forced:
+            raise ReportError(f"{source}: blocking_skip is true but no forced gate is SKIPPED")
     return ParsedReport(
         kind="cbp-gate-report",
         source=source,
@@ -302,13 +375,27 @@ def _parse_gate_report(data: dict[str, Any], source: str, observed: int | None) 
         skip_count=skip,
         skip_ratio=ratio,
         blocking_skip=data["blocking_skip"],
+        body_hash_scope=str(data.get("body_hash_scope", "")),
+        artifact_repository=str(data.get("artifact_repository", "")),
         gates=tuple(dict(entry) for entry in data["gates"]),
     )
 
 
-def _parse_manifest(data: dict[str, Any], source: str, observed: int | None) -> ParsedReport:
+def _parse_manifest(
+    data: dict[str, Any],
+    source: str,
+    observed: int | None,
+    *,
+    require_body_scope: bool = False,
+    expected_repository: str = "",
+) -> ParsedReport:
     _precheck_exit(data, source, observed)
-    problems = schema.validate_manifest(data, require_producer=False)
+    problems = schema.validate_manifest(
+        data,
+        require_producer=False,
+        require_body_scope=require_body_scope,
+        expected_repository=expected_repository,
+    )
     if problems:
         raise ReportError(f"{source}: " + "; ".join(problems))
     status = _required_status(data, source, observed)
@@ -326,5 +413,7 @@ def _parse_manifest(data: dict[str, Any], source: str, observed: int | None) -> 
         skip_count=int(data["skip_count"]),
         skip_ratio=float(data["skip_ratio"]),
         blocking_skip=bool(data["blocking_skip"]),
+        body_hash_scope=str(data.get("body_hash_scope", "")),
+        artifact_repository=str(data.get("artifact_repository", "")),
         gates=tuple(dict(entry) for entry in data["gates"]),
     )

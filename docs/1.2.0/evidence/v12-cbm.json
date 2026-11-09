@@ -1,0 +1,133 @@
+{
+  "schema": "cbp-v12-rule-report/v1",
+  "rules": [
+    {
+      "id": "CBP-CI-001",
+      "name": "TEST_ROOTS_IN_CI",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-VER-001",
+      "name": "VERSION_SYNC",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-QA-001",
+      "name": "QA_COUNTS_CONSISTENT",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-DEBT-001",
+      "name": "DEBT_EVIDENCE",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-SIGN-001",
+      "name": "SIGN_TOOLS_IN_TAG",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-WT-001",
+      "name": "WORKTREE_CLEAN_AFTER_GATES",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-BIN-001",
+      "name": "BINARY_AUTHENTICODE",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-DOC-001",
+      "name": "DOC_REFERENCES_EXIST",
+      "severity": "warning",
+      "status": "WARN",
+      "findings": [
+        "docs/CONTRACT_PROPOSAL_5.1.md:130: referenced path missing: tools/release_body_v17.py",
+        "docs/INTEGRATION_REQUIREMENTS.md:59: referenced path missing: tools/dogfood_manifest.py",
+        "docs/INTEGRATION_REQUIREMENTS.md:64: referenced path missing: tests/v17/mock/cbe_cli.py",
+        "docs/INTEGRATION_REQUIREMENTS.md:64: referenced path missing: tests/v17/mock/cbp_cli.py",
+        "docs/V17_BLOCKERS.md:43: referenced path missing: tools/release_body_v17.py",
+        "README.md:154: referenced path missing: cbm-evidence/cbm-report.json",
+        "README.md:154: referenced path missing: cbm-evidence/cbm-body.md",
+        "README.md:157: referenced path missing: cbm-evidence/cbm-report.final.json",
+        "README.md:158: referenced path missing: cbm-evidence/cbm-body.final.md",
+        "README.md:162: referenced path missing: cbm-evidence-out/cbm-report.json",
+        "README.md:163: referenced path missing: cbm-evidence-out/cbm-body.md"
+      ],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-CLAIM-001",
+      "name": "CAPABILITY_CLAIMS",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-COV-001",
+      "name": "COVERAGE_HARD",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-PROOF-001",
+      "name": "PROOF_HIGH_TIER",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-SLOP-001",
+      "name": "DOCSTRING_SLOP",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    }
+  ],
+  "summary": {
+    "PASS": 11,
+    "FAIL": 0,
+    "WARN": 1,
+    "blocking_failed": false,
+    "warning_failed": true
+  },
+  "expired_entries": []
+}

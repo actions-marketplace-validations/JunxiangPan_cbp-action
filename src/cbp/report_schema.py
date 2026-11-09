@@ -226,6 +226,9 @@ MANIFEST_REQUIRED_FIELDS = (
 
 MANIFEST_ALLOWED_FIELDS = frozenset(MANIFEST_REQUIRED_FIELDS) | {
     "producer_id",
+    # 1.2.0: body hashing scope and the repository that owns the artifacts.
+    "body_hash_scope",
+    "artifact_repository",
     # CONTRACT §4 publish preconditions bind the manifest to a CI run and a commit.
     "ci_run_id",
     "ci_commit_sha",
@@ -233,8 +236,27 @@ MANIFEST_ALLOWED_FIELDS = frozenset(MANIFEST_REQUIRED_FIELDS) | {
     "generated_by",
 }
 
+#: 1.2.0 supports only the base body hash. "full" is explicitly unsupported.
+BODY_HASH_SCOPES = ("base",)
 
-def validate_manifest(manifest: Any, *, require_producer: bool = False) -> list[str]:
+
+def body_hash_scope_problem(value: Any, path: str = "body_hash_scope") -> str:
+    """Return why a body_hash_scope is unsupported, or an empty string."""
+    if value in BODY_HASH_SCOPES:
+        return ""
+    return (
+        f"{path}: unsupported value {value!r}; supported: "
+        + ", ".join(BODY_HASH_SCOPES)
+    )
+
+
+def validate_manifest(
+    manifest: Any,
+    *,
+    require_producer: bool = False,
+    require_body_scope: bool = False,
+    expected_repository: str = "",
+) -> list[str]:
     """Validate a CBP quality manifest against CONTRACT §5.
 
     Returns a list of problems with JSON-ish paths. An empty list means valid.
@@ -264,6 +286,21 @@ def validate_manifest(manifest: Any, *, require_producer: bool = False) -> list[
     version = manifest.get("version")
     if "version" in manifest and (not isinstance(version, str) or not VERSION_PATTERN.fullmatch(version)):
         problems.append("version: must look like vX.Y.Z")
+    if "body_hash_scope" in manifest:
+        problem = body_hash_scope_problem(manifest["body_hash_scope"])
+        if problem:
+            problems.append(problem)
+    elif require_body_scope:
+        problems.append("body_hash_scope: required field is missing")
+    repository = manifest.get("artifact_repository")
+    if "artifact_repository" in manifest:
+        if not isinstance(repository, str) or not repository:
+            problems.append("artifact_repository: a non-empty string is required")
+        elif expected_repository and repository != expected_repository:
+            problems.append(
+                f"artifact_repository: {repository!r} != expected {expected_repository!r} "
+                "(cross-repository artifact)"
+            )
     gate_status = manifest.get("gate_status")
     if "gate_status" in manifest and gate_status not in REPORT_STATUS_VALUES:
         problems.append(

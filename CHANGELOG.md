@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.2.0 — RC (not released)
+
+Release candidate only: no PyPI upload and no GitHub Release until human audit.
+
+- `body_hash_scope: "base"` in the quality manifest. Only `base` is supported;
+  `full` or any unknown value is an input error (exit 2), and
+  `--parse-report --require-body-scope` rejects a manifest that omits it.
+  `release_body_hash` covers the generated body, not later ERRATA addenda.
+- `artifact_repository` is recorded from `--artifact-repository`,
+  `artifact_repository` in `cbp.json`, or `GITHUB_REPOSITORY`, and omitted when
+  empty. `--expected-repository` rejects a cross-repository artifact (exit 2).
+- cbc-event 0.1.x emitter: local `events.jsonl` + `head.json`, hash chain
+  (genesis = 64 zeroes), HMAC-SHA256, rate limit, disabled by default, dropped
+  events counted. CLI: `--cbc-event-dir`, `--cbc-event-max`,
+  `--cbc-event-hmac-env`.
+- Twelve detection rules with `--v12`:
+  - blocking: CBP-CI-001 test roots, CBP-VER-001 version sync, CBP-QA-001 QA
+    counts, CBP-DEBT-001 debt evidence, CBP-SIGN-001 sign tools, CBP-WT-001
+    worktree cleanliness **and conflict markers in tracked files**;
+  - warning + baseline: CBP-BIN-001 Authenticode, CBP-DOC-001 doc references,
+    CBP-CLAIM-001 capability claims, CBP-COV-001 coverage hard gate,
+    CBP-PROOF-001 proof tier, CBP-SLOP-001 docstring templates.
+- Waivers and baselines require `rule`, `path`, `reason` and `expires`; an
+  expired entry is not applied and is reported. Blocking failures exit 3;
+  warning-only failures exit 0 with a visible WARN (blocking in 1.2.1);
+  malformed entries exit 2.
+- `--v12-report` writes a machine-readable rule report; `--v12-only` selects
+  rules; `--waivers` and `--v12-baseline` load the entry files.
+- `cbp manifest` generates a CONTRACT §5 quality manifest for an external
+  subject package (`--package-id`, `--producer-id`, `--gate-report`,
+  `--artifact`, `--release-body`, `--body-hash-scope base`, `--evidence`).
+  Missing inputs or a digest mismatch are exit 2 and write nothing; a FAIL gate
+  report stays FAIL. CBC `validate_cbp` accepts the real CBC manifest and CBM's
+  B3 field check accepts the real CBM-scoped manifest (B2 not claimed).
+- Real-repository E2E (read-only) and consumer parity are recorded in
+  `docs/1.2.0/E2E_MATRIX.md`; the 12-rule delivery matrix is
+  `docs/1.2.0/RULE_MATRIX.md`.
+
 ## 1.1.0 — 2026-11-09
 
 - `report_schema.py`: the six CONTRACT §3 gate statuses, the §1 exit-code table

@@ -176,6 +176,33 @@
     },
     "pypi_project": {
       "type": "string"
+    },
+    "artifact_repository": {
+      "type": "string",
+      "description": "owner/repo that owns the build artifacts; recorded in the manifest and checked by --expected-repository."
+    },
+    "cbc_event": {
+      "type": "object",
+      "description": "cbc-event 0.1.x emission; disabled unless enabled and dir are set.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "dir": {
+          "type": "string"
+        },
+        "max_events": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1000
+        },
+        "hmac_key_env": {
+          "type": "string",
+          "description": "Environment variable holding an HMAC-SHA256 key."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,

@@ -1,0 +1,61 @@
+{
+  "schema_version": "1",
+  "package_id": "cbc",
+  "producer_id": "cbp",
+  "version": "v0.1.0",
+  "gate_status": "PASS",
+  "exit_code": 0,
+  "applicable_gate_count": 1,
+  "skip_count": 0,
+  "skip_ratio": 0.0,
+  "blocking_skip": false,
+  "body_hash_scope": "base",
+  "package_type": "",
+  "gates": [
+    {
+      "name": "claims",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "binary",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "encoding",
+      "status": "PASS",
+      "reason": ""
+    },
+    {
+      "name": "docs",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "custom",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "coverage",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "dependency",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "comments",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    },
+    {
+      "name": "upgrade",
+      "status": "SKIPPED",
+      "reason": "not configured"
+    }
+  ]
+}

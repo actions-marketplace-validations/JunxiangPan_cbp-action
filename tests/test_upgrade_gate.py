@@ -5,8 +5,17 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from cbp import upgrade_gate
 from cbp.config import GateConfig
+
+
+@pytest.fixture(autouse=True)
+def _not_a_pull_request(monkeypatch) -> None:
+    """The gate refuses upgrade scripts on PRs by design; these tests exercise
+    the script policy itself, not the event policy."""
+    monkeypatch.delenv("GITHUB_EVENT_NAME", raising=False)
 
 
 def test_no_upgrade_checks_is_a_noop(tmp_path: Path) -> None:

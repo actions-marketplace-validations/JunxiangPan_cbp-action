@@ -140,7 +140,7 @@ def test_observed_exit_must_match_the_report() -> None:
 
 
 def test_blocking_skip_requires_a_forced_skip_entry() -> None:
-    data = _gate_report(blocking_skip=True, gate_status="FAIL", exit_code=3)
+    data = _gate_report(blocking_skip=True, gate_status="FAIL", exit_code=3, package_type="cbp")
     with pytest.raises(report_parser.ReportError) as excinfo:
         report_parser.parse_report_data(data)
     assert "no forced gate is SKIPPED" in str(excinfo.value)

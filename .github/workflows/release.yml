@@ -2,27 +2,70 @@ name: release
 on:
   workflow_dispatch:
     inputs:
+      rc_run_id:
+        description: RC run id whose attested cbp-rc bundle is released
+        required: true
       ci_run_id:
-        description: CI run id whose quality-manifest artifact must be released
+        description: CI run id whose quality-manifest artifact is released
         required: true
       release_tag:
-        description: Release tag, for example v0.1.3
+        description: Release tag, for example v1.2.0
+        required: true
+      e2e_run_id:
+        description: e2e-payload run id that proved the hostile-input cases
+        required: false
+      expected_wheel_sha256:
+        description: Exact wheel sha256 from the audited cbp-rc run
+        required: true
+      expected_sdist_sha256:
+        description: Exact sdist sha256 from the audited cbp-rc run
         required: true
       allow_placeholders:
         description: Explicitly allow unresolved GitHub placeholder strings
         type: boolean
         default: false
-      e2e_run_id:
-        description: e2e-payload run id that proved the hostile-input cases
-        required: false
 jobs:
-  verify-artifact:
+  preflight:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
     steps:
-      - name: Require green main CI before publish
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: refs/tags/${{ inputs.release_tag }}
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[test]"
+      - name: Validate RC provenance without creating a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          E2E_RUN_ID: ${{ inputs.e2e_run_id }}
+          EXPECTED_WHEEL: ${{ inputs.expected_wheel_sha256 }}
+          EXPECTED_SDIST: ${{ inputs.expected_sdist_sha256 }}
+        run: |
+          python tools/release_preflight.py \
+            --rc-run-id "$RC_RUN_ID" \
+            --ci-run-id "$CI_RUN_ID" \
+            --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --e2e-run-id "$E2E_RUN_ID" \
+            --expected-wheel-sha256 "$EXPECTED_WHEEL" \
+            --expected-sdist-sha256 "$EXPECTED_SDIST"
+
+  verify-artifact:
+    needs: preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require green CI before publish
         env:
           GH_TOKEN: ${{ github.token }}
           CI_RUN_ID: ${{ inputs.ci_run_id }}
@@ -51,20 +94,21 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e ".[test]"
-      - name: Require the CI run commit to be the tag commit
+      - name: Require the CI and RC runs to be the tag commit
         env:
           GH_TOKEN: ${{ github.token }}
           CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           TAG_COMMIT=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
           CI_COMMIT=$(gh api "repos/${{ github.repository }}/actions/runs/$CI_RUN_ID" --jq .head_sha)
+          RC_COMMIT=$(gh api "repos/${{ github.repository }}/actions/runs/$RC_RUN_ID" --jq .head_sha)
           echo "tag_commit=$TAG_COMMIT"
           echo "ci_commit=$CI_COMMIT"
-          test "$TAG_COMMIT" = "$CI_COMMIT" || {
-            echo "TAG != CI COMMIT: tag $RELEASE_TAG points at $TAG_COMMIT but CI run $CI_RUN_ID was built at $CI_COMMIT" >&2
-            exit 3
-          }
+          echo "rc_commit=$RC_COMMIT"
+          test "$TAG_COMMIT" = "$CI_COMMIT" || { echo "TAG != CI COMMIT" >&2; exit 3; }
+          test "$TAG_COMMIT" = "$RC_COMMIT" || { echo "TAG != RC COMMIT" >&2; exit 3; }
       - name: Download manifest artifact by explicit run id
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,8 +133,9 @@ jobs:
           for name in root config coverage-json coverage-allowlist coverage-signature require-coverage-signature coverage-threshold policy-coverage-threshold dependency-lock install-command docs-manifest binary-artifacts package-zip claims-manifest claims-notes release-body sarif-output baseline enable-coverage enable-encoding enable-dependency enable-comments enable-docs enable-binary enable-claims enable-custom enable-upgrade mode; do
             grep -q "^  ${name}:" "$GITHUB_WORKSPACE/action.yml"
           done
+
   publish:
-    needs: verify-artifact
+    needs: [preflight, verify-artifact]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -98,14 +143,18 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - name: Validate release tag
+      - name: Validate release tag and hashes
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
+          EXPECTED_WHEEL: ${{ inputs.expected_wheel_sha256 }}
+          EXPECTED_SDIST: ${{ inputs.expected_sdist_sha256 }}
         run: |
           case "$RELEASE_TAG" in
             v[0-9]*.[0-9]*.[0-9]*) ;;
             *) echo "invalid release_tag" >&2; exit 2;;
           esac
+          case "$EXPECTED_WHEEL" in (*[!0-9a-f]*|'') echo "invalid wheel hash" >&2; exit 2;; esac
+          case "$EXPECTED_SDIST" in (*[!0-9a-f]*|'') echo "invalid sdist hash" >&2; exit 2;; esac
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: refs/tags/${{ inputs.release_tag }}
@@ -113,69 +162,107 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.12"
-      - name: Download the single build artifact
+      - name: Download the audited RC bundle and the CI manifest
         env:
           GH_TOKEN: ${{ github.token }}
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
           CI_RUN_ID: ${{ inputs.ci_run_id }}
         run: |
-          rm -rf dist
-          gh run download "$CI_RUN_ID" -n cbp-dist -D dist
-          (cd dist && sha256sum -c WHEEL_SHA256)
-      - name: Install built CBP wheel
-        run: |
-          python -m pip install --force-reinstall --no-deps dist/*.whl
-          python -c "import cbp; print(cbp.__file__)"
-      - name: Download verified artifact again
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CI_RUN_ID: ${{ inputs.ci_run_id }}
-        run: |
+          rm -rf rc artifact
+          gh run download "$RC_RUN_ID" -n cbp-rc -D rc
           gh run download "$CI_RUN_ID" -n "quality-manifest-$CI_RUN_ID" -D artifact
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
-        with:
-          subject-path: |
-            dist/*.whl
-            artifact/quality-manifest.json
-            artifact/quality-manifest.json.sha256
-      - name: Generate release body from built wheel
+          test -f rc/RC_ASSETS.sha256
+          test -f artifact/quality-manifest.json
+      - name: Check the exact RC artifact hashes
+        env:
+          EXPECTED_WHEEL: ${{ inputs.expected_wheel_sha256 }}
+          EXPECTED_SDIST: ${{ inputs.expected_sdist_sha256 }}
+        run: |
+          WHEEL=$(sha256sum rc/*.whl | awk '{print $1}')
+          SDIST=$(sha256sum rc/*.tar.gz | awk '{print $1}')
+          test "$WHEEL" = "$EXPECTED_WHEEL" || { echo "wheel hash mismatch: $WHEEL != $EXPECTED_WHEEL" >&2; exit 3; }
+          test "$SDIST" = "$EXPECTED_SDIST" || { echo "sdist hash mismatch: $SDIST != $EXPECTED_SDIST" >&2; exit 3; }
+          (cd rc && sed 's#  dist/#  #' RC_ASSETS.sha256 | sha256sum -c -)
+      - name: Verify tag, RC and CI commits agree
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          TAG_COMMIT=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          RC_COMMIT=$(gh api "repos/${{ github.repository }}/actions/runs/$RC_RUN_ID" --jq .head_sha)
+          CI_COMMIT=$(gh api "repos/${{ github.repository }}/actions/runs/$CI_RUN_ID" --jq .head_sha)
+          test "$TAG_COMMIT" = "$RC_COMMIT" || { echo "tag != RC commit" >&2; exit 3; }
+          test "$TAG_COMMIT" = "$CI_COMMIT" || { echo "tag != CI commit" >&2; exit 3; }
+      - name: Install the audited RC wheel
+        run: |
+          python -m pip install --force-reinstall --no-deps rc/*.whl
+          python -c "import cbp; print(cbp.__file__)"
+      - name: Remint the manifest from the audited RC hashes
+        env:
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python tools/remint_manifest.py             --manifest artifact/quality-manifest.json             --artifact rc/*.whl --artifact rc/*.tar.gz             --expect-run-id "$CI_RUN_ID"             --expect-commit "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"             --out artifact/quality-manifest.json
+          (cd artifact && sha256sum quality-manifest.json > quality-manifest.json.sha256)
+      - name: Verify the reminted manifest
+        env:
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python tools/verify_manifest_artifact.py --manifest=artifact/quality-manifest.json --hash=artifact/quality-manifest.json.sha256 --notes=artifact/docs/RELEASE_NOTES.generated.md --run-id="$CI_RUN_ID" --commit-sha="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" --require-gate-pass
+      - name: Assert manifest artifact_hashes equal the RC hashes
+        run: |
+          python tools/remint_manifest.py --manifest artifact/quality-manifest.json --artifact rc/*.whl --artifact rc/*.tar.gz --check-only
+      - name: Verify the RC attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify rc/*.whl --repo "$GITHUB_REPOSITORY"
+          gh attestation verify rc/*.tar.gz --repo "$GITHUB_REPOSITORY"
+      - name: Generate release body from the audited RC wheel
         env:
           RELEASE_VERSION: ${{ inputs.release_tag }}
           CI_RUN_ID: ${{ inputs.ci_run_id }}
           E2E_RUN_ID: ${{ inputs.e2e_run_id }}
         run: |
-          python tools/generate_release_body.py --wheel dist/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output dist/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID"
-      - name: Generate release asset manifest
+          python tools/generate_release_body.py --wheel rc/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output rc/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID"
+      - name: Generate release asset manifest from the RC bundle
         run: |
-          cd dist
+          cd rc
           sha256sum *.whl *.tar.gz ../artifact/quality-manifest.json ../artifact/quality-manifest.json.sha256 ../artifact/docs/RELEASE_NOTES.generated.md | awk '{n=$2; sub(/.*\//,"",n); print $1 " *" n}' > RELEASE_ASSETS.sha256
+      - name: Expose the release asset manifest to the AI gate
+        run: |
+          mkdir -p dist
+          cp rc/RELEASE_ASSETS.sha256 dist/RELEASE_ASSETS.sha256
       - name: Upload the release body used for publishing
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: release-body-${{ github.run_id }}
-          path: dist/RELEASE_BODY.md
+          path: rc/RELEASE_BODY.md
           if-no-files-found: error
       - name: AI release gate before publish
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          mkdir -p docs dist
+          mkdir -p docs
           cp artifact/docs/RELEASE_NOTES.generated.md docs/RELEASE_NOTES.generated.md
-          python -m cbp.cli --gate ai-release --tag "$RELEASE_TAG" --release-body dist/RELEASE_BODY.md --mode enforce
-      - name: Publish release from the generated notes
+          python -m cbp.cli --gate ai-release --tag "$RELEASE_TAG" --release-body rc/RELEASE_BODY.md --mode enforce
+      - name: Publish release from the audited RC bundle
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           case "$RELEASE_TAG" in (v[0-9]*.[0-9]*.[0-9]*) ;; (*) echo "invalid release_tag" >&2; exit 2;; esac
           test -f artifact/docs/RELEASE_NOTES.generated.md
-          gh release create "$RELEASE_TAG" dist/*.whl dist/*.tar.gz dist/RELEASE_ASSETS.sha256 artifact/quality-manifest.json artifact/quality-manifest.json.sha256 artifact/docs/RELEASE_NOTES.generated.md --notes-file dist/RELEASE_BODY.md
+          gh release create "$RELEASE_TAG" rc/*.whl rc/*.tar.gz rc/RELEASE_ASSETS.sha256 artifact/quality-manifest.json artifact/quality-manifest.json.sha256 artifact/docs/RELEASE_NOTES.generated.md --notes-file rc/RELEASE_BODY.md
       - name: Verify published release body and asset inventory
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          python -m cbp.cli --root "$GITHUB_WORKSPACE" --release-body dist/RELEASE_BODY.md --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+          python -m cbp.cli --root "$GITHUB_WORKSPACE" --release-body rc/RELEASE_BODY.md --release-assets rc/RELEASE_ASSETS.sha256 --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
 
   clean-verify:
     needs: publish
@@ -197,14 +284,14 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.12"
-      - name: Download the single build artifact
+      - name: Download the audited RC bundle
         env:
           GH_TOKEN: ${{ github.token }}
-          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
         run: |
           rm -rf dist-verify
-          gh run download "$CI_RUN_ID" -n cbp-dist -D dist-verify
-          (cd dist-verify && sha256sum -c WHEEL_SHA256)
+          gh run download "$RC_RUN_ID" -n cbp-rc -D dist-verify
+          (cd dist-verify && sed 's#  dist/#  #' RC_ASSETS.sha256 | sha256sum -c -)
       - name: Install the released wheel on a clean runner
         run: python -m pip install --no-deps dist-verify/*.whl
       - name: Download the body this run published
@@ -220,4 +307,4 @@ jobs:
           case "$RELEASE_TAG" in (v[0-9]*.[0-9]*.[0-9]*) ;; (*) echo "invalid release_tag" >&2; exit 2;; esac
           mkdir -p dist
           gh release download "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" -p RELEASE_ASSETS.sha256 -D dist --clobber
-          python -m cbp.cli --root "$GITHUB_WORKSPACE" --release-body dist/RELEASE_BODY.md --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+          python -m cbp.cli --root "$GITHUB_WORKSPACE" --release-body dist/RELEASE_BODY.md --release-assets dist/RELEASE_ASSETS.sha256 --verify-release "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"

@@ -1,0 +1,88 @@
+{
+  "schema": "cbc-chain/v1",
+  "chain_scope": "release",
+  "chain_profile": "sealed-v1",
+  "package_id": "cbc",
+  "version": "v0.1.0",
+  "tag": "v0.1.0",
+  "body_marker": "CBC-EVIDENCE",
+  "body_hash_scope": "base",
+  "canonicalization": "cbc-event.canonical/rfc8785",
+  "hash_alg": "sha256",
+  "genesis": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "link_count": 7,
+  "asset_link_count": 2,
+  "root_hash": "sha256:04010d648d5617610ec0c453fde163b8551a0fa35f6ab6e5eb974e529688f668",
+  "links": [
+    {
+      "index": 1,
+      "prev_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "kind": "manifest",
+      "role": "header",
+      "name": "manifest",
+      "sha256": "sha256:07fc47f38f3335bd69dfd98d83ad50ec78bb3351b2e353a797bfeacc108b9d7e",
+      "size": 155,
+      "link_hash": "sha256:2c42724257fb6af1fbdf78d65148e2720c23009f66662e9161ea27765cc3b01a"
+    },
+    {
+      "index": 2,
+      "prev_hash": "sha256:2c42724257fb6af1fbdf78d65148e2720c23009f66662e9161ea27765cc3b01a",
+      "kind": "gate_report",
+      "role": "cbe",
+      "name": "cbe-report.json",
+      "sha256": "sha256:1cce4df60c7efa0469a1ed56c1da558ac6197c6ae4f5c312cccc1bb1e5bc3ac3",
+      "size": 492,
+      "link_hash": "sha256:3a396a71ef7adac4f9a76570a6400d0133aa82c1e0ac22fcf6bcf713a1975f67"
+    },
+    {
+      "index": 3,
+      "prev_hash": "sha256:3a396a71ef7adac4f9a76570a6400d0133aa82c1e0ac22fcf6bcf713a1975f67",
+      "kind": "gate_report",
+      "role": "cbp",
+      "name": "quality-manifest.json",
+      "sha256": "sha256:01438d31067f05508454c81af068efc61c9797034c778746b94d77e3de63bac0",
+      "size": 1593,
+      "link_hash": "sha256:c315691d14edba0f5a3d5b31319488ed56d05cfeaac0f4c77e720c519f216b1c"
+    },
+    {
+      "index": 4,
+      "prev_hash": "sha256:c315691d14edba0f5a3d5b31319488ed56d05cfeaac0f4c77e720c519f216b1c",
+      "kind": "control",
+      "role": "assets_manifest",
+      "name": "RELEASE_ASSETS.sha256",
+      "sha256": "sha256:7058925ff6e98845e0803612d7178b40412efbfdf02278112a5042fab720aaf8",
+      "size": 190,
+      "link_hash": "sha256:9dd7898083f54b060b53f5ea534b474d073e197ca1d5abdacc7b938ed77710f6"
+    },
+    {
+      "index": 5,
+      "prev_hash": "sha256:9dd7898083f54b060b53f5ea534b474d073e197ca1d5abdacc7b938ed77710f6",
+      "kind": "control",
+      "role": "wheel_digest",
+      "name": "WHEEL_SHA256",
+      "sha256": "sha256:f31ff3801493c600d4dfe7f52a4c9185113067853fad8cc25a8031556dc50ae3",
+      "size": 100,
+      "link_hash": "sha256:dcec141ff0b74699bce22b87e475cac9d1a5fd839c17e96fee7767b2ab5e70f5"
+    },
+    {
+      "index": 6,
+      "prev_hash": "sha256:dcec141ff0b74699bce22b87e475cac9d1a5fd839c17e96fee7767b2ab5e70f5",
+      "kind": "asset",
+      "role": "artifact",
+      "name": "cbc_event-0.1.0-py3-none-any.whl",
+      "sha256": "sha256:485dc47dd0ca0f69a1e8bcf8f6b1a0523310a492f21ba5463908322f2aacca58",
+      "size": 36454,
+      "link_hash": "sha256:5759dca3ddd4fcf02c6769321088a6d48699a67ab04c180b092634eb3bf6e4b3"
+    },
+    {
+      "index": 7,
+      "prev_hash": "sha256:5759dca3ddd4fcf02c6769321088a6d48699a67ab04c180b092634eb3bf6e4b3",
+      "kind": "asset",
+      "role": "artifact",
+      "name": "cbc_event-0.1.0.tar.gz",
+      "sha256": "sha256:000c9697ab25e5872cd949e83e4e0ca5c900826da6c1fcbf5e0f21e55f58d598",
+      "size": 35714,
+      "link_hash": "sha256:04010d648d5617610ec0c453fde163b8551a0fa35f6ab6e5eb974e529688f668"
+    }
+  ]
+}

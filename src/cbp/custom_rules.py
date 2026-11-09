@@ -25,7 +25,9 @@ def _files(cfg: GateConfig, patterns: list[str], excludes: list[str]) -> list[Pa
     result: list[Path] = []
     for pattern in patterns:
         for path in cfg.root.glob(pattern):
-            if not path.is_file() or any(part in SKIP_PARTS for part in path.parts):
+            if not path.is_file() or any(
+                part in SKIP_PARTS or part.startswith(".tmp-") for part in path.parts
+            ):
                 continue
             relative = path.relative_to(cfg.root).as_posix()
             if any(Path(relative).match(ex) for ex in excludes):
@@ -47,7 +49,10 @@ def _cache_state(cfg: GateConfig, rules, previous: dict | None = None) -> tuple[
     import os
 
     for base, dirs, names in os.walk(cfg.root):
-        dirs[:] = [name for name in dirs if name not in SKIP_PARTS]
+        dirs[:] = [
+            name for name in dirs
+            if name not in SKIP_PARTS and not name.startswith(".tmp-")
+        ]
         for name in names:
             if name in SKIP_PARTS or name.endswith("cache.json"):
                 continue

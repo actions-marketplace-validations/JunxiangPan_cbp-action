@@ -1,0 +1,156 @@
+{
+  "schema": "cbp-v12-rule-report/v1",
+  "rules": [
+    {
+      "id": "CBP-CI-001",
+      "name": "TEST_ROOTS_IN_CI",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-VER-001",
+      "name": "VERSION_SYNC",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-QA-001",
+      "name": "QA_COUNTS_CONSISTENT",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-DEBT-001",
+      "name": "DEBT_EVIDENCE",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-SIGN-001",
+      "name": "SIGN_TOOLS_IN_TAG",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-WT-001",
+      "name": "WORKTREE_CLEAN_AFTER_GATES",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-BIN-001",
+      "name": "BINARY_AUTHENTICODE",
+      "severity": "warning",
+      "status": "WARN",
+      "findings": [
+        "START-INSTALLER.exe: no Authenticode signature blob"
+      ],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-DOC-001",
+      "name": "DOC_REFERENCES_EXIST",
+      "severity": "warning",
+      "status": "WARN",
+      "findings": [
+        "DEPLOYMENT.md:18: referenced path missing: docs/STATUS_v1.6.1.md",
+        "DEPLOYMENT.md:221: referenced path missing: AgentRuntime/data/router/settings.json",
+        "docs/90-audit/GITHUB_WEB_UPDATE_CHECKLIST_v1.6.2.md:35: referenced path missing: docs/40-history/incidents/sqlite-readonly.md",
+        "docs/DST_GUARD.md:183: referenced path missing: tests/test_dst_guard.py",
+        "docs/IMPROVEMENT_REPORT.md:9: referenced path missing: quality/artifacts/mutation/targets.json",
+        "docs/IMPROVEMENT_REPORT.md:96: referenced path missing: checks/assertions.json",
+        "docs/IMPROVEMENT_REPORT.md:108: referenced path missing: templates/REVOKED_TEMPLATE.md",
+        "docs/PLUGIN_ECOSYSTEM.md:53: referenced path missing: data/shared_preferences.json",
+        "docs/PLUGIN_ECOSYSTEM.md:207: referenced path missing: AgentRuntime/agentruntime/__init__.py",
+        "docs/releases/RELEASE_NOTES_v1.0.2.md:95: referenced path missing: tests/test_acl_model.py",
+        "docs/releases/RELEASE_NOTES_v1.0.3.md:99: referenced path missing: tests/test_media_bypass.py",
+        "docs/releases/RELEASE_NOTES_v1.0.5.md:7: referenced path missing: overlay/agentruntime/core/tools/message_tools.py",
+        "docs/releases/RELEASE_NOTES_v1.0.5.md:9: referenced path missing: plugins/agentruntime_plugin_security_gate/main.py",
+        "docs/releases/RELEASE_NOTES_v1.0.5.md:29: referenced path missing: tools/start-auxruntime.ps1",
+        "docs/releases/RELEASE_NOTES_v1.0.5.md:31: referenced path missing: tools/game-mode.ps1",
+        "docs/releases/RELEASE_NOTES_v1.0.6.md:26: referenced path missing: plugins/agentruntime_plugin_totp_broker/main.py",
+        "docs/releases/RELEASE_NOTES_v1.0.7.md:11: referenced path missing: tests/test_update_safety.py",
+        "docs/releases/RELEASE_NOTES_v1.0.8.md:11: referenced path missing: tools/skip_version.json",
+        "docs/releases/RELEASE_NOTES_v1.1.1.md:7: referenced path missing: tools/dashboard_background.ps1",
+        "docs/releases/RELEASE_NOTES_v1.2.0.md:7: referenced path missing: tools/plugin_hub.ps1",
+        "docs/releases/RELEASE_NOTES_v1.2.0.md:20: referenced path missing: tools/dashboard_modules.ps1",
+        "docs/releases/RELEASE_NOTES_v1.2.0.md:33: referenced path missing: tools/plugin_market.ps1",
+        "docs/releases/RELEASE_NOTES_v1.3.2.md:43: referenced path missing: tools/broker_config.json",
+        "docs/releases/RELEASE_NOTES_v1.3.2.md:75: referenced path missing: tools/send_email_test.py",
+        "docs/releases/RELEASE_NOTES_v1.3.3.md:11: referenced path missing: tools/broker_config.json",
+        "docs/releases/RELEASE_NOTES_v1.4.1.md:36: referenced path missing: data/config/agentruntime_plugin_webui_bridge_config.json",
+        "docs/releases/RELEASE_NOTES_v1.6.1.md:198: referenced path missing: overlay/overlay-manifest.json",
+        "docs/releases/RELEASE_NOTES_v1.6.1.md:262: referenced path missing: overlay/overlay-manifest.json",
+        "docs/v1.7/AUDIT_B5.md:32: referenced path missing: tests/test_known_fail_silent.py",
+        "docs/v1.7/MEMORY_AUDIT_DRAFT.md:113: referenced path missing: docs/CB-2026.11.md",
+        "installer/README.md:118: referenced path missing: installer/install-state.json",
+        "webui/README.md:39: referenced path missing: webui/config.json"
+      ],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-CLAIM-001",
+      "name": "CAPABILITY_CLAIMS",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-COV-001",
+      "name": "COVERAGE_HARD",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-PROOF-001",
+      "name": "PROOF_HIGH_TIER",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-SLOP-001",
+      "name": "DOCSTRING_SLOP",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    }
+  ],
+  "summary": {
+    "PASS": 10,
+    "FAIL": 0,
+    "WARN": 2,
+    "blocking_failed": false,
+    "warning_failed": true
+  },
+  "expired_entries": []
+}

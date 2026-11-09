@@ -56,6 +56,8 @@ class GateConfig:
     binary_limit_mb: float = 5.0
     binary_artifacts: Path | str = ""
     package_zip: Path | None = None
+    artifact_repository: str = ""
+    cbc_event: dict = field(default_factory=dict)
     enable_coverage: bool = True
     enable_encoding: bool = True
     encoding_allowlist: tuple[dict, ...] = ()

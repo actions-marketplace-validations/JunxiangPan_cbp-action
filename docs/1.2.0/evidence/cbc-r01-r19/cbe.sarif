@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "CBE/builtin-manifest",
+          "informationUri": "https://github.com/JunxiangPan/cbe",
+          "rules": []
+        }
+      },
+      "automationDetails": {
+        "id": "cbe/builtin-manifest"
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "cbe/rule_count": 0,
+    "cbe/result_count": 0,
+    "cbe/namespaces": [
+      "CBE"
+    ]
+  }
+}

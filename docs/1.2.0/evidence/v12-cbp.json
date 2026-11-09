@@ -1,0 +1,121 @@
+{
+  "schema": "cbp-v12-rule-report/v1",
+  "rules": [
+    {
+      "id": "CBP-CI-001",
+      "name": "TEST_ROOTS_IN_CI",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-VER-001",
+      "name": "VERSION_SYNC",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-QA-001",
+      "name": "QA_COUNTS_CONSISTENT",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-DEBT-001",
+      "name": "DEBT_EVIDENCE",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-SIGN-001",
+      "name": "SIGN_TOOLS_IN_TAG",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-WT-001",
+      "name": "WORKTREE_CLEAN_AFTER_GATES",
+      "severity": "blocking",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-BIN-001",
+      "name": "BINARY_AUTHENTICODE",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-DOC-001",
+      "name": "DOC_REFERENCES_EXIST",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-CLAIM-001",
+      "name": "CAPABILITY_CLAIMS",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-COV-001",
+      "name": "COVERAGE_HARD",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-PROOF-001",
+      "name": "PROOF_HIGH_TIER",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    },
+    {
+      "id": "CBP-SLOP-001",
+      "name": "DOCSTRING_SLOP",
+      "severity": "warning",
+      "status": "PASS",
+      "findings": [],
+      "waived": [],
+      "baselined": []
+    }
+  ],
+  "summary": {
+    "PASS": 12,
+    "FAIL": 0,
+    "WARN": 0,
+    "blocking_failed": false,
+    "warning_failed": false
+  },
+  "expired_entries": []
+}

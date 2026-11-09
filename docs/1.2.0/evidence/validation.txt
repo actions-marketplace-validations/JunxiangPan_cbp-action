@@ -1,0 +1,15 @@
+CBC target-scoped gate (CBC 11943f14)
+  cbp --root cbc --package-id cbc --producer-id cbp --version v0.1.0
+  gate report sha256 213e824392879ce539c6664725d5cd919b7f1d471de8d91b9f75d2557279e78b
+  package_id=cbc producer_id=cbp version=v0.1.0 gate_status=PASS
+  manifest sha256 01438d31067f05508454c81af068efc61c9797034c778746b94d77e3de63bac0
+  CBC_VALIDATE_CBP=PASS (cbc, v0.1.0, base, PASS)
+  R02-R19: 18/18 assertions; R01 NOT RUN (no upload); R16 SKIP on Windows
+
+CBM target-scoped gate (CBM 8acb628)
+  cbp --root cbm --package-id cbm --producer-id cbp --version v0.1.0
+  gate report sha256 ac4d243b94a13a2aa591ba96890fdd4d2f4984c30e6e199c15b9ccaf102be7d3
+  package_id=cbm producer_id=cbp version=v0.1.0 gate_status=FAIL
+  reason: encoding FAIL - audit/v1.2.0-rc/b5-probe-declared.stdout.txt: invalid UTF-8
+  manifest sha256 967f15ccd8f222518ceb3c613ffda8d4f2ed04cfede958485f0bd79531e410cb
+  CBM_LOAD=PASS (cbm, v0.1.0); B3 fields complete; gate_status FAIL is preserved

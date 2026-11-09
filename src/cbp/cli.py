@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 import os
+import platform
+import re
 import sys
 from pathlib import Path
 
-from . import baseline, binary_gate, suppression, claims_gate, comment_gate, coverage_gate, custom_rules, dependency_gate, docs_gate, encoding_gate, errata, report_parser, report_schema, sarif, upgrade_gate, verify_release
+from . import baseline, binary_gate, suppression, cbc_event, claims_gate, comment_gate, coverage_gate, custom_rules, dependency_gate, docs_gate, encoding_gate, errata, report_parser, report_schema, sarif, upgrade_gate, verify_release
 from .config import SCHEMA_VERSION, load_config
 
 
@@ -136,6 +139,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
         return _errata(argv[1:])
     if argv and argv[:2] == ["policy", "test"]:
         return _policy_test(argv[2:])
+    if argv and argv[0] == "manifest":
+        from . import package_manifest
+        return package_manifest.main(argv[1:])
     parser = argparse.ArgumentParser(prog="cbp")
     parser.add_argument("--root", default=".")
     parser.add_argument("--config", default="")
@@ -161,6 +167,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
     parser.add_argument("--manifest", default="")
     parser.add_argument("--sarif-output", default="")
     parser.add_argument("--report-json", default="")
+    parser.add_argument("--package-id", default="")
+    parser.add_argument("--producer-id", default="")
+    parser.add_argument("--version", default="")
     parser.add_argument("--parse-report", default="")
     parser.add_argument("--observed-exit-code", type=int, default=None)
     parser.add_argument("--baseline", default="")
@@ -182,11 +191,36 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
     parser.add_argument("--test-path", default="")
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--github-annotations", action="store_true")
+    parser.add_argument("--artifact-repository", default="")
+    parser.add_argument("--body-hash-scope", default="")
+    parser.add_argument("--require-body-scope", action="store_true")
+    parser.add_argument("--expected-repository", default="")
+    parser.add_argument("--cbc-event-dir", default="")
+    parser.add_argument("--cbc-event-max", type=int, default=1000)
+    parser.add_argument("--cbc-event-hmac-env", default="")
+    parser.add_argument("--v12", action="store_true")
+    parser.add_argument("--v12-report", default="")
+    parser.add_argument("--v12-only", default="")
+    parser.add_argument("--waivers", default="")
+    parser.add_argument("--v12-baseline", default="")
     args = parser.parse_args(argv)
+    if args.body_hash_scope and args.body_hash_scope not in report_schema.BODY_HASH_SCOPES:
+        print(json.dumps({
+            "gate_status": "FAIL",
+            "exit_code": report_schema.EXIT_INPUT,
+            "error": "unsupported body_hash_scope "
+            + repr(args.body_hash_scope)
+            + "; supported: "
+            + ", ".join(report_schema.BODY_HASH_SCOPES),
+        }, ensure_ascii=False))
+        return report_schema.EXIT_INPUT
     if args.parse_report:
         try:
             parsed = report_parser.parse_report(
-                Path(args.parse_report), observed_exit_code=args.observed_exit_code
+                Path(args.parse_report),
+                observed_exit_code=args.observed_exit_code,
+                require_body_scope=args.require_body_scope,
+                expected_repository=args.expected_repository,
             )
         except report_parser.ReportError as exc:
             print(json.dumps(
@@ -260,6 +294,49 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
         value = getattr(args, key)
         if value is not None:
             overrides[key] = value
+    if args.v12:
+        from . import v12_rules
+        only = {item.strip() for item in args.v12_only.split(",") if item.strip()} if args.v12_only else None
+        try:
+            results, expired = v12_rules.run_rules(
+                Path(args.root),
+                only=only,
+                waivers_path=args.waivers or None,
+                baseline_path=args.v12_baseline or None,
+            )
+        except v12_rules.RuleConfigError as exc:
+            print(json.dumps({
+                "gate_status": "FAIL",
+                "exit_code": report_schema.EXIT_INPUT,
+                "error": str(exc),
+            }, ensure_ascii=False))
+            return report_schema.EXIT_INPUT
+        payload = v12_rules.report(results, expired)
+        for result in results:
+            suffix = ""
+            if result.waived:
+                suffix += f" waived={len(result.waived)}"
+            if result.baselined:
+                suffix += f" baselined={len(result.baselined)}"
+            print(f"{result.rule_id} {result.name}: {result.status}{suffix}")
+            for finding in result.findings:
+                print(f"  {finding}")
+        if expired:
+            print(f"V12_EXPIRED_ENTRIES={len(expired)}")
+            for item in expired:
+                print(f"  EXPIRED {item}")
+        if args.v12_report:
+            Path(args.v12_report).write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+        blocking = bool(payload["summary"]["blocking_failed"])
+        warning = bool(payload["summary"]["warning_failed"])
+        print(
+            f"CBP_V12_RESULT={'FAIL' if blocking else ('WARN' if warning else 'PASS')} "
+            f"rules={len(results)} blocking_failed={str(blocking).lower()} "
+            f"warning_failed={str(warning).lower()}"
+        )
+        return report_schema.EXIT_GATE if blocking else report_schema.EXIT_PASS
     try:
         cfg = load_config(Path(args.root), config_path, overrides)
     except (OSError, ValueError, RuntimeError) as exc:
@@ -285,6 +362,41 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
             return report_schema.EXIT_INPUT
         cfg.custom_rules = tuple(getattr(cfg, "custom_rules", ()) or ()) + tuple(pack["rules"])
         cfg.enable_custom = True
+    artifact_repository = args.artifact_repository or os.environ.get("GITHUB_REPOSITORY", "")
+    cbc_config = getattr(cfg, "cbc_event", {}) or {}
+    if not isinstance(cbc_config, dict):
+        print(json.dumps({"gate_status": "FAIL", "exit_code": report_schema.EXIT_INPUT, "error": "cbc_event must be an object"}, ensure_ascii=False))
+        return report_schema.EXIT_INPUT
+    event_dir = (
+        args.cbc_event_dir
+        or str(cbc_config.get("dir", "") or "")
+        or os.environ.get("CBP_CBC_EVENT_DIR", "")
+    )
+    event_enabled = bool(event_dir) and bool(
+        args.cbc_event_dir
+        or cbc_config.get("enabled", False)
+        or os.environ.get("CBP_CBC_EVENT_DIR")
+    )
+    event_max = args.cbc_event_max if args.cbc_event_max != 1000 else int(cbc_config.get("max_events", 1000))
+    hmac_env = args.cbc_event_hmac_env or str(cbc_config.get("hmac_key_env", "") or "")
+    hmac_key = os.environ.get(hmac_env, "") if hmac_env else ""
+    try:
+        cbp_version = importlib.metadata.version("cbp-action")
+    except importlib.metadata.PackageNotFoundError:
+        cbp_version = str(getattr(cfg, "release_version", "") or "0")
+    emitter = cbc_event.EventEmitter(
+        event_dir,
+        source={"kind": "tool", "name": "cbp", "version": cbp_version, "instance": platform.node() or "cbp"},
+        enabled=event_enabled,
+        max_events=event_max,
+        hmac_key=hmac_key,
+    )
+    emitter.emit("INFO", "cbp.run.start", {
+        "root": str(Path(args.root).resolve()),
+        "package_type": str(getattr(cfg, "package_type", "") or ""),
+        "mode": args.mode,
+        "body_hash_scope": args.body_hash_scope or "base",
+    })
     runners = {
         "encoding": encoding_gate.run,
         "coverage": coverage_gate.run,
@@ -379,6 +491,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
             entries.append({"name": name, "status": "SKIPPED", "reason": reason})
             gate_results.append((name, True, "SKIPPED (" + reason + ")"))
             print(f"{name}: SKIPPED ({reason})")
+            emitter.emit("WARN", "cbp.gate.result", {"gate": name, "status": "SKIPPED", "reason": reason})
             continue
         executed += 1
         status, passed, detail = outcome_by_name[name]
@@ -387,11 +500,13 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
             entries.append({"name": name, "status": "SKIPPED", "reason": detail})
             gate_results.append((name, True, "SKIPPED_INFRA " + detail))
             print(f"{name}: SKIPPED_INFRA {detail}")
+            emitter.emit("CRITICAL", "cbp.gate.result", {"gate": name, "status": "SKIPPED_INFRA", "reason": detail})
             continue
         if status == "FAIL":
             entries.append({"name": name, "status": "FAIL", "reason": (detail.splitlines() or [""])[0][:500]})
             gate_results.append((name, False, detail))
             print(f"{name}: FAIL {detail}")
+            emitter.emit("CRITICAL", "cbp.gate.result", {"gate": name, "status": "FAIL", "reason": detail[:500]})
             if args.github_annotations:
                 for line in detail.splitlines():
                     match = __import__("re").match(r"^(?P<path>[^:]+):(?P<line>\d+):\s*(?P<message>.+)$", line)
@@ -401,6 +516,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
         entries.append({"name": name, "status": "PASS", "reason": ""})
         gate_results.append((name, True, detail))
         print(f"{name}: PASS {detail}")
+        emitter.emit("INFO", "cbp.gate.result", {"gate": name, "status": "PASS", "reason": ""})
     baseline_path = Path(args.generate_baseline) if args.generate_baseline else Path(args.baseline) if args.baseline else Path(args.root) / "cbp-baseline.json"
     if args.generate_baseline:
         entries_to_write = []
@@ -458,20 +574,57 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
         f"CBP_APPLICABLE={applicable} CBP_SKIP_RATIO={skip_ratio:.6f} "
         f"CBP_BLOCKING_SKIP={'true' if blocking_skip else 'false'}"
     )
-    if args.report_json:
-        report = {
-            "schema_version": report_schema.MANIFEST_SCHEMA_VERSION,
-            "package_id": report_schema.PACKAGE_ID,
-            "producer_id": report_schema.PRODUCER_ID,
-            "version": "v" + str(getattr(cfg, "release_version", "") or "0.0.0").lstrip("v"),
+    emitter.emit(
+        "CRITICAL" if exit_code in (report_schema.EXIT_GATE, report_schema.EXIT_SKIP) else "INFO",
+        "cbp.run.end",
+        {
             "gate_status": gate_status,
             "exit_code": exit_code,
             "applicable_gate_count": applicable,
             "skip_count": skip_count,
             "skip_ratio": skip_ratio,
             "blocking_skip": blocking_skip,
+        },
+    )
+    if emitter.enabled:
+        print(f"CBC_EVENT emitted={emitter.emitted} dropped={emitter.dropped} dir={emitter.event_dir}")
+    if args.report_json:
+        report_package_id = args.package_id or report_schema.PACKAGE_ID
+        report_producer_id = args.producer_id or report_schema.PRODUCER_ID
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", report_package_id):
+            print(json.dumps({"gate_status": "FAIL", "exit_code": report_schema.EXIT_INPUT,
+                              "error": f"invalid --package-id {report_package_id!r}"}, ensure_ascii=False))
+            return report_schema.EXIT_INPUT
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", report_producer_id):
+            print(json.dumps({"gate_status": "FAIL", "exit_code": report_schema.EXIT_INPUT,
+                              "error": f"invalid --producer-id {report_producer_id!r}"}, ensure_ascii=False))
+            return report_schema.EXIT_INPUT
+        if args.version:
+            raw_version = args.version.lstrip("vV")
+            if not re.fullmatch(r"\d+\.\d+\.\d+", raw_version):
+                print(json.dumps({"gate_status": "FAIL", "exit_code": report_schema.EXIT_INPUT,
+                                  "error": f"invalid --version {args.version!r}"}, ensure_ascii=False))
+                return report_schema.EXIT_INPUT
+            report_version = "v" + raw_version
+        else:
+            report_version = "v" + str(getattr(cfg, "release_version", "") or "0.0.0").lstrip("v")
+        report = {
+            "schema_version": report_schema.MANIFEST_SCHEMA_VERSION,
+            "package_id": report_package_id,
+            "producer_id": report_producer_id,
+            "version": report_version,
+            "gate_status": gate_status,
+            "exit_code": exit_code,
+            "applicable_gate_count": applicable,
+            "skip_count": skip_count,
+            "skip_ratio": skip_ratio,
+            "blocking_skip": blocking_skip,
+            "body_hash_scope": args.body_hash_scope or "base",
+            "package_type": package_type,
             "gates": entries,
         }
+        if artifact_repository:
+            report["artifact_repository"] = artifact_repository
         try:
             report_parser.parse_report_data(report, source="--report-json")
         except report_parser.ReportError as exc:

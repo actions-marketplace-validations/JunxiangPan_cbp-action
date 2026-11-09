@@ -1,5 +1,34 @@
 # Upgrading CBP
 
+## 1.1.0 → 1.2.0 (RC)
+
+1.2.0 is additive for readers but the manifest grows two fields:
+
+- `body_hash_scope: "base"` — required by CBM/CBC consumers; `full` is not
+  supported (exit 2).
+- `artifact_repository` — recorded when configured; cross-repository artifacts
+  are rejected by `--expected-repository`.
+
+Compatibility is one-way: 1.2.0 parses 1.1.0 manifests, but a pinned 1.1.0
+consumer rejects a 1.2.0 manifest with
+`unexpected key(s) artifact_repository, body_hash_scope`. Upgrade every consumer
+(CBS/CBE/CBM) before a producer emits 1.2.0 manifests. CBM and CBC need
+`body_hash_scope` for their real E2E, so they must move first.
+
+New commands are opt-in:
+
+```bash
+python -m cbp.cli --root . --v12 --v12-report v12-report.json
+python -m cbp.cli --root . --v12 --waivers waivers.json --v12-baseline baseline.json
+```
+
+`--v12` does not run the normal gates; it evaluates only the twelve rules.
+Blocking-rule failures exit 3; warning-only failures exit 0 with a visible WARN
+until 1.2.1.
+
+cbc-event emission stays off unless `--cbc-event-dir` (or `cbc_event.enabled`
+with a `dir` in `cbp.json`) is provided.
+
 CBP is infrastructure. A version bump must never be a forced migration for
 existing CI.
 
