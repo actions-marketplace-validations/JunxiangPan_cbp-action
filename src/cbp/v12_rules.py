@@ -15,9 +15,12 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import subprocess
 from dataclasses import dataclass, field
+
+from .body_hash import canonical_body_hash
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
@@ -358,6 +361,55 @@ def rule_wt_001(ctx: RuleContext) -> list[str]:
     return findings
 
 
+def body_binding_findings(manifest_path: Path, body_path: Path, label: str = "") -> list[str]:
+    """CBP-BODY-001: manifest.release_body_hash must match the actual body."""
+    label = label or manifest_path.name
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"{label}: manifest unreadable: {exc}"]
+    if not isinstance(manifest, dict):
+        return [f"{label}: manifest must be a JSON object"]
+    scope = manifest.get("body_hash_scope")
+    if scope != "base":
+        return [f"{label}: body_hash_scope={scope!r} is not supported (require 'base')"]
+    expected = manifest.get("release_body_hash")
+    actual = canonical_body_hash(body_path.read_bytes())
+    if expected != actual:
+        return [
+            f"{label}: release_body_hash mismatch: manifest={expected} body={actual}"
+        ]
+    return []
+
+
+def rule_body_001(ctx: RuleContext) -> list[str]:
+    """CBP-BODY-001: the manifest must bind the exact published body bytes."""
+    override_manifest = os.environ.get("CBP_BODY_MANIFEST", "")
+    manifest_path = (
+        Path(override_manifest) if override_manifest else ctx.root / "quality-manifest.json"
+    )
+    if not manifest_path.is_file():
+        return []
+    override_body = os.environ.get("CBP_BODY_FILE", "")
+    candidates = (
+        [Path(override_body)]
+        if override_body
+        else [
+            ctx.root / "dist" / "RELEASE_BODY.md",
+            ctx.root / "RELEASE_BODY.md",
+            ctx.root / "docs" / "RELEASE_BODY.md",
+        ]
+    )
+    body_path = next((path for path in candidates if path.is_file()), None)
+    try:
+        label = manifest_path.relative_to(ctx.root).as_posix()
+    except ValueError:
+        label = manifest_path.name
+    if body_path is None:
+        return [f"{label}: release body missing; cannot verify release_body_hash"]
+    return body_binding_findings(manifest_path, body_path, label)
+
+
 def _pe_has_signature(path: Path) -> bool:
     """Return True when the PE certificate table is non-empty (presence only)."""
     data = path.read_bytes()
@@ -565,6 +617,7 @@ RULES: list[tuple[str, str, str, Callable[[RuleContext], list[str]]]] = [
     ("CBP-DEBT-001", "DEBT_EVIDENCE", "blocking", rule_debt_001),
     ("CBP-SIGN-001", "SIGN_TOOLS_IN_TAG", "blocking", rule_sign_001),
     ("CBP-WT-001", "WORKTREE_CLEAN_AFTER_GATES", "blocking", rule_wt_001),
+    ("CBP-BODY-001", "RELEASE_BODY_BINDING", "blocking", rule_body_001),
     ("CBP-BIN-001", "BINARY_AUTHENTICODE", "warning", rule_bin_001),
     ("CBP-DOC-001", "DOC_REFERENCES_EXIST", "warning", rule_doc_001),
     ("CBP-CLAIM-001", "CAPABILITY_CLAIMS", "warning", rule_claim_001),

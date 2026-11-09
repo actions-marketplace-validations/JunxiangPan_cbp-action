@@ -1,0 +1,70 @@
+{
+  "applicable_gate_count": 9,
+  "artifact_hashes": {
+    "cbp_action-1.2.1-py3-none-any.whl": "b30b78e876b1c13be4472e7a6e477f8e45466947da9ac306184cfa55427b1718",
+    "cbp_action-1.2.1.tar.gz": "08103c217a6eb19d4393f4ebee03a0d0ded25f0ca16d900e1f7f5271f5a95f59"
+  },
+  "artifact_repository": "JunxiangPan/cbp-action",
+  "blocking_skip": false,
+  "body_hash_scope": "base",
+  "ci_commit_sha": "19e44f79ce5a0737d3522bb2bc6dbafa0835aab0",
+  "ci_run_id": "42612217101",
+  "evidence_sha256": "a1ae096399db2d1d979fe8bb2eb901e9b3fa590840675103160170a8c8823bc5",
+  "gate_status": "PASS",
+  "gates": [
+    {
+      "name": "claims",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "binary",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "encoding",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "docs",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "custom",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "coverage",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "dependency",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "comments",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "upgrade",
+      "reason": "",
+      "status": "PASS"
+    }
+  ],
+  "generated_at": "2026-11-09T11:52:24Z",
+  "generated_by": "cbp-action dogfood job",
+  "package_id": "cbp",
+  "producer_id": "cbp",
+  "release_body_hash": "561c4767b5ce89d4151760666f9866f2cc0948aa938cc98b981282d242d28fbe",
+  "schema_version": "1",
+  "skip_count": 0,
+  "skip_ratio": 0.0,
+  "version": "v1.2.1"
+}

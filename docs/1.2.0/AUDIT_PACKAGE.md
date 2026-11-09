@@ -8,22 +8,22 @@ GitHub Release. Merging the draft PR, tagging, and publishing are owner actions.
 | Item | Value |
 | --- | --- |
 | Branch | `1.2.0-dev` |
-| RC commit | `163f138` (remints the CI manifest from RC hashes) |
+| RC commit | `5ebd0eb` (remints the CI manifest from RC hashes) |
 | Draft PR | https://github.com/JunxiangPan/cbp-action/pull/1 |
-| PR CI | run `42603730509` — success |
-| Release CI (manifest) | run `42604400520` — success |
-| Action E2E | run `42603730815` — success (15/15 payload + consumer parity) |
-| RC build + attest | run `42603720434` — success |
-| wheel | `cbp_action-1.2.0-py3-none-any.whl`<br>`bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16` |
-| sdist | `cbp_action-1.2.0.tar.gz`<br>`3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1` |
+| PR CI | run `42605121408` — success |
+| Release CI (manifest) | run `42605522395` — success |
+| Action E2E | run `42605121445` — success (15/15 payload + consumer parity) |
+| RC build + attest | run `42605114400` — success |
+| wheel | `cbp_action-1.2.0-py3-none-any.whl`<br>`188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e` |
+| sdist | `cbp_action-1.2.0.tar.gz`<br>`08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd` |
 | Attestation | `gh attestation verify` exit 0 for both; subject digest equals the local hash; repository `JunxiangPan/cbp-action` |
 | PyPI | `https://pypi.org/pypi/cbp-action/1.2.0/json` → **404** |
 | GitHub Release | `v1.2.0` → **not found** |
-| v1.2.0 tag | exists at `8431712`; approved to delete/recreate at `163f138` |
+| v1.2.0 tag | recreated at `5ebd0eb` (old `163f138` deleted; no Release attached) |
 
 Post-RC history: `9ee52fb` added conflict markers to CBP-WT-001, `bb8d4d6`
 fixed temp-file hygiene, `855fed7` added the external-package manifest
-generator, `72252b4` fixed target-scoped gate provenance, and `163f138` fixes
+generator, `72252b4` fixed target-scoped gate provenance, and `5ebd0eb` fixes
 the release path, preflight short-SHA handling, and manifest remint: `release.yml` publishes the audited `cbp-rc` bundle, not
 `cbp-dist`, and verifies expected hashes plus tag/RC/CI commit equality. Earlier candidates `5da8b87`, `9ee52fb`, `bb8d4d6`, `855fed7`, `72252b4`,
 `d3ec73e` and `8431712` are superseded.
@@ -35,7 +35,7 @@ creates a release (`attest-build-provenance` + artifact upload).
 
 - Local: **421 passed**, 43 warnings.
 - CI coverage: `security_core=91.64%/90.00%`, `cbp=90.56%/80.00%`.
-- `docs/1.2.0/E2E_MATRIX.md`: 5 repositories × 12 rules, read-only, plus the
+- `docs/1.2.0/E2E_MATRIX.md`: 5 repositories × 13 rules, read-only, plus the
   requested CBS `contract/v1.7.1` E2E (exit 3, three committed conflict
   markers in `.github/workflows/vm-proof.yml:15/16/18`).
 
@@ -59,7 +59,7 @@ rewritten to PASS. CBC R02–R19: 18/18 assertions (17 executed; R16 skipped on
 Windows); R01 NOT RUN (no upload). CBM B3 is field-level complete; **B2 is not
 claimed**. Evidence: `docs/1.2.0/evidence/`.
 
-## Twelve rules — fixtures, tests, exit codes
+## Thirteen rules — fixtures, tests, exit codes
 
 | ID | Rule | Severity | Fixtures (positive / negative / false-positive guard) | Exit |
 | --- | --- | --- | --- | --- |
@@ -121,15 +121,15 @@ for their real E2E, so they must move to 1.2.0 before the train can pass.
    in 1.2.0; 1.2.1 needs an accepted baseline with expiry before they block.
 4. **RC rebuild policy** — the RC workflow ignores docs-only pushes
    (`paths-ignore: docs/**, *.md`). Code commits still rebuild and require
-   re-attestation. The candidate for this audit is `163f138` / run
-   `42603720434`; earlier candidates are superseded.
+   re-attestation. The candidate for this audit is `5ebd0eb` / run
+   `42605114400`; earlier candidates are superseded.
 
 ## Reproduction
 
 ```bash
 python -m pytest -q tests
 python -m cbp.cli --root . --v12 --v12-report v12-report.json
-gh run view 42603720434 --repo JunxiangPan/cbp-action
+gh run view 42605114400 --repo JunxiangPan/cbp-action
 gh attestation verify cbp_action-1.2.0-py3-none-any.whl --repo JunxiangPan/cbp-action
 ```
 
@@ -138,8 +138,8 @@ manifest (RC `artifact_hashes`, recomputed `evidence_sha256`, preserved gate /
 body / commit fields), re-verifies it, and asserts `--check-only` before
 publishing. Preflight performs the same remint.
 
-Preflight (read-only): `PREFLIGHT_OK tag=v1.2.0 ci_run=42604400520
-rc_run=42603720434 commit=163f138` — raw output in
+Preflight (read-only): `PREFLIGHT_OK tag=v1.2.0 ci_run=42605522395
+rc_run=42605114400 commit=5ebd0eb` — raw output in
 `docs/1.2.0/evidence/preflight.txt`.
 
 Self-audit: `docs/1.2.0/SELF_AUDIT.md`. Release steps that must not be executed

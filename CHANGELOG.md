@@ -1,8 +1,46 @@
 # Changelog
 
-## 1.2.0 — RC (not released)
+## 1.2.2 — 2026-11-09
 
-Release candidate only: no PyPI upload and no GitHub Release until human audit.
+CBP follows CONTRACT v1.7.1 RC2 (`contract/v1.7.1` at `6835789`, NOT FROZEN).
+
+- `schema_version` stays the string `"1"`.
+- `artifact_repository` is an object: `repository`, `run_id`, `artifact_name`.
+  CBP's own release manifest points at the `cbp-rc` artifact of the RC run;
+  external package manifests use the target repository/run/artifact.
+- `ci_commit_sha` is required and must be 40 lowercase hex; `ci_run_id`,
+  `generated_at` and `generated_by` are accepted optional fields.
+- `gate_status` accepts `NOT_UPLOADED`, which is not PASS and not in the skip
+  ratio.
+- The canonical body hash is unchanged; the body emits
+  `<!-- CBP-BODY-BASE-END -->` and the hash covers the bytes before it.
+  CBP-BODY-001 stays blocking.
+- RC2 schema fixtures: a real v1.2.2 manifest passes; the real v1.2.0 and
+  v1.2.1 manifests fail as legacy string-repository fixtures.
+- v1.2.1 is not moved and its Release body is not edited; CBE is notified to
+  upgrade to the v1.2.2 manifest shape.
+
+## 1.2.1 — 2026-11-09
+
+- Single canonical release-body hash (`body_hash_bytes`: UTF-8, BOM stripped,
+  LF, exactly one trailing newline). Generators, remint, verifier and
+  CBP-BODY-001 all call it.
+- `tools/remint_manifest.py --release-body` recomputes `release_body_hash` from
+  the exact body that will be uploaded; a missing body exits 2 and writes
+  nothing; a body different from CI is never silently preserved.
+- `release.yml` generates the body, remints the manifest from it, re-verifies,
+  and publishes that same body in one job (no cross-job body hash).
+- New blocking rule CBP-BODY-001 (13 rules total): fails when the manifest body
+  hash does not match the actual body; it fails on the v1.2.0 fixture and
+  passes on v1.2.1.
+- `docs/1.2.0/ERRATA.md` records the v1.2.0 body-hash mismatch and the stale
+  docs pointer. The v1.2.0 tag, PyPI 1.2.0 and Release body are not modified.
+- Documentation/schema/SHA pin fixes: 1.2.0 CHANGELOG entry is final; README
+  drops stale roadmap/VM wording; `schemas/manifest.schema.json` now validates
+  CONTRACT v1.7 manifests; tag pins remain rejected with the documented reason
+  and the full-40-hex alternative.
+
+## 1.2.0 — 2026-11-09
 
 - `body_hash_scope: "base"` in the quality manifest. Only `base` is supported;
   `full` or any unknown value is an input error (exit 2), and

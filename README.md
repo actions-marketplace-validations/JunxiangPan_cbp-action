@@ -5,7 +5,7 @@
 A reusable, self-hosted quality gate for repositories that do not want to
 trust a green check without evidence.
 
-CBP is intentionally small: Python standard library at runtime, JSON/TOML
+CBP keeps a small surface area with zero runtime dependencies: Python standard library only, JSON/TOML
 configuration, and one CLI used by both GitHub Actions and local CI.
 
 CBP is designed to evolve. As the CB ecosystem grows, CBP's rule engine will expand to cover different languages and frameworks.
@@ -209,8 +209,8 @@ python -m cbp.cli --root . --v12 --v12-only CBP-CI-001
 python -m cbp.cli --root . --v12 --waivers waivers.json --v12-baseline baseline.json
 ```
 
-Twelve rules: six blocking (`CBP-CI-001`, `CBP-VER-001`, `CBP-QA-001`,
-`CBP-DEBT-001`, `CBP-SIGN-001`, `CBP-WT-001`) and six warning
+Thirteen rules: seven blocking (`CBP-CI-001`, `CBP-VER-001`, `CBP-QA-001`,
+`CBP-DEBT-001`, `CBP-SIGN-001`, `CBP-WT-001`, `CBP-BODY-001`) and six warning
 (`CBP-BIN-001`, `CBP-DOC-001`, `CBP-CLAIM-001`, `CBP-COV-001`,
 `CBP-PROOF-001`, `CBP-SLOP-001`). Blocking failure exits 3; warning-only
 failure exits 0 with a visible `WARN` until 1.2.1.
@@ -504,6 +504,16 @@ Allow force pushes: off
 Tag protection prevents accidental re-pointing of a released tag. It does not
 prevent editing a Release body; `verify-release` covers that gap.
 
+## Action pinning
+
+Every `uses:` in a workflow must be pinned to a **full 40-character commit SHA**
+(for example `actions/checkout@11d5960a326750d5838078e36cf38b85af677262`).
+A tag or branch pin (`@v4`, `@main`) is a mutable reference and is rejected by
+the artifact-integrity check with exit 2 and the message
+`GitHub Action is not pinned to a full SHA`. Pin the commit and keep the tag in
+a comment if you want the readable version. `usage.yml`, `docs/` and `examples/`
+are documentation and are not scanned.
+
 ## Releasing
 
 See [`RELEASING.md`](RELEASING.md) for the commit -> CI -> tag -> release order.
@@ -556,4 +566,4 @@ Every other job downloads the `cbp-dist` artifact.
 
 ## VM-only evidence
 
-VM-only chaos evidence is planned for the v1.1.0 roadmap. A green CI run is not treated as a substitute for real VM acceptance; until the harness report is attached, this remains an explicit roadmap item.
+VM-only chaos evidence remains an explicit gap. v1.2.0 is backed by CI, RC attestation and consumer parity, not by a VM acceptance report; do not describe CI evidence as VM acceptance.

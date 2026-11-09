@@ -39,8 +39,13 @@ def test_preflight_job_runs_the_tool() -> None:
 def test_publish_remints_and_checks_the_manifest() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "tools/remint_manifest.py" in text
-    assert "Assert manifest artifact_hashes equal the RC hashes" in text
-    assert "--check-only" in text
+    assert "--release-body rc/RELEASE_BODY.md" in text
+    assert "--artifact-repository" in text
+    assert "--artifact-name cbp-rc" in text
+    assert "Assert manifest artifact and body hashes equal" in text
+    assert "Verify manifest binds the published body" in text
+    assert "CBP-BODY-001" in text
+    assert text.index("Generate the release body that will be published") < text.index("Remint the manifest from the RC hashes")
 
 
 def test_ai_gate_sees_the_release_asset_manifest() -> None:

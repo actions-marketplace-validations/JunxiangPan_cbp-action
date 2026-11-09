@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from . import report_schema
+from .body_hash import base_body_bytes, canonical_body_hash
 
 BASE_MARKER = b"<!-- CBC-EVIDENCE-BEGIN -->"
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -41,8 +42,8 @@ def canonical_sha256(value: Any) -> str:
 
 
 def base_body(data: bytes) -> bytes:
-    """Return the base body: the part CBC hashes, before its evidence appendix."""
-    return data.split(BASE_MARKER, 1)[0]
+    """Return the base body before the CBP/CBC appendix marker."""
+    return base_body_bytes(data)
 
 
 def normalize_version(value: str) -> str:
@@ -167,7 +168,13 @@ def build_manifest(
     body_hash_scope: str,
     evidence: list[str] | None = None,
     artifact_sha256: dict[str, str] | None = None,
-    artifact_repository: str = "",
+    artifact_repository: str | dict[str, str] = "",
+    artifact_run_id: str = "",
+    artifact_name: str = "",
+    ci_commit_sha: str = "",
+    ci_run_id: str = "",
+    generated_at: str = "",
+    generated_by: str = "",
     out: Path | None = None,
 ) -> dict[str, Any]:
     """Build the manifest and (optionally) write it atomically."""
@@ -196,7 +203,7 @@ def build_manifest(
     if not release_body.is_file():
         raise ManifestError(f"release body missing: {release_body}")
     body_data = release_body.read_bytes()
-    body_digest = sha256_bytes(base_body(body_data))
+    body_digest = canonical_body_hash(base_body(body_data))
     hashes = _artifact_hashes(list(artifacts), dict(artifact_sha256 or {}))
     evidence_hashes = []
     for item in evidence or []:
@@ -221,8 +228,27 @@ def build_manifest(
         "release_body_hash": body_digest,
         "body_hash_scope": body_hash_scope,
     }
-    if artifact_repository:
+    repository_object: dict[str, str] | None = None
+    if isinstance(artifact_repository, dict):
+        repository_object = dict(artifact_repository)
+    elif artifact_repository and artifact_run_id and artifact_name:
+        repository_object = {
+            "repository": artifact_repository,
+            "run_id": artifact_run_id,
+            "artifact_name": artifact_name,
+        }
+    if repository_object is not None:
+        manifest["artifact_repository"] = repository_object
+    elif artifact_repository:
         manifest["artifact_repository"] = artifact_repository
+    for key, value in (
+        ("ci_commit_sha", ci_commit_sha),
+        ("ci_run_id", ci_run_id),
+        ("generated_at", generated_at),
+        ("generated_by", generated_by),
+    ):
+        if value:
+            manifest[key] = value
     unsigned = {key: value for key, value in manifest.items() if key != "evidence_sha256"}
     if evidence_hashes:
         manifest["evidence_sha256"] = canonical_sha256(
@@ -230,7 +256,9 @@ def build_manifest(
         )
     else:
         manifest["evidence_sha256"] = canonical_sha256(unsigned)
-    problems = report_schema.validate_manifest(manifest, require_body_scope=True)
+    problems = report_schema.validate_manifest(
+        manifest, require_body_scope=True, require_rc2=repository_object is not None
+    )
     if problems:
         raise ManifestError("generated manifest is invalid: " + "; ".join(problems))
     if out is not None:
@@ -260,6 +288,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--body-hash-scope", default="")
     parser.add_argument("--evidence", action="append", default=[])
     parser.add_argument("--artifact-repository", default="")
+    parser.add_argument("--artifact-run-id", default="")
+    parser.add_argument("--artifact-name", default="")
+    parser.add_argument("--ci-commit-sha", default="")
+    parser.add_argument("--ci-run-id", default="")
     parser.add_argument("--out", default="quality-manifest.json")
     args = parser.parse_args(argv)
 
@@ -285,6 +317,10 @@ def main(argv: list[str] | None = None) -> int:
             evidence=args.evidence,
             artifact_sha256=expected,
             artifact_repository=args.artifact_repository,
+            artifact_run_id=args.artifact_run_id,
+            artifact_name=args.artifact_name,
+            ci_commit_sha=args.ci_commit_sha,
+            ci_run_id=args.ci_run_id,
             out=Path(args.out),
         )
     except ManifestError as exc:

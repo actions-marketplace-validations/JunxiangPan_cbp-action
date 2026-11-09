@@ -170,7 +170,17 @@ def _manifest_document(
         "ci_commit_sha": commit_sha,
         "generated_at": _now(),
         "generated_by": GENERATED_BY,
-        **({"artifact_repository": artifact_repository} if artifact_repository else {}),
+        **(
+            {
+                "artifact_repository": {
+                    "repository": artifact_repository,
+                    "run_id": str(run_id),
+                    "artifact_name": "cbp-dist",
+                }
+            }
+            if artifact_repository
+            else {}
+        ),
     }
 
 

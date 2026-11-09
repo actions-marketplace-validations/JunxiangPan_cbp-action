@@ -1,18 +1,18 @@
 # CBP 1.2.0 — self-audit (release-path fix)
 
-Status: **PASS for re-audit, no publish**. Code candidate `163f138`, branch
+Status: **PASS for re-audit, no publish**. Code candidate `5ebd0eb`, branch
 `1.2.0-dev`, PR #1 open. Each item cites the command, file or hash used.
 
 ## [1] Candidate identity / repository state — PASS
 
 | Check | Evidence |
 | --- | --- |
-| Code candidate | `git rev-parse HEAD` → `163f138` |
+| Code candidate | `git rev-parse HEAD` → `5ebd0eb` |
 | Branch | `1.2.0-dev` |
-| PR #1 | `gh pr view 1` → `OPEN`, head `163f138` |
-| CI | run `42603730509` — success |
-| Action E2E | run `42603730815` — success |
-| v1.2.0 tag | exists at `8431712` (old candidate); approved to delete/recreate at `163f138` |
+| PR #1 | `gh pr view 1` → `OPEN`, head `5ebd0eb` |
+| CI | run `42605121408` — success |
+| Action E2E | run `42605121445` — success |
+| v1.2.0 tag | recreated at `5ebd0eb` (old `163f138` deleted; no Release attached) |
 | PyPI 1.2.0 | `https://pypi.org/pypi/cbp-action/1.2.0/json` → **404** |
 | GitHub Release | `gh release view v1.2.0` → not found |
 | v1.1.0 untouched | `git rev-parse 'v1.1.0^{}'` → `f98acf3ed15498b6f16d1a397a5d0f1fe2843fa9` |
@@ -23,19 +23,19 @@ Status: **PASS for re-audit, no publish**. Code candidate `163f138`, branch
 - Coverage: `python -m coverage run --branch --source=src/cbp,tools -m pytest -q tests`
   then `python -m coverage json` → `security_core=91.64%/90.00%`,
   `cbp=90.56%/80.00%`.
-- PR CI run `42603730509`: all jobs success. Release CI run `42604400520`
-  (push main at `163f138`): success. E2E `42603730815`: success
+- PR CI run `42605121408`: all jobs success. Release CI run `42605522395`
+  (push main at `5ebd0eb`): success. E2E `42605121445`: success
   (15/15 payload + consumer parity).
 
 ## [3] Build artifacts / attestation — PASS
 
 | Artifact | SHA256 |
 | --- | --- |
-| wheel | `bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16` |
-| sdist | `3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1` |
-| `RC_ASSETS.sha256` | `fdeeab8283847dfcdc1f5f592fc49a394696ee2702ed23dfe0857d14f9370603` |
+| wheel | `188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e` |
+| sdist | `08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd` |
+| `RC_ASSETS.sha256` | `84041286984161db060e43b8ecf45e0462f1a7ba8a95c777546c8830483dc7c5` |
 
-- Source: RC run `42603720434`, artifact `cbp-rc`.
+- Source: RC run `42605114400`, artifact `cbp-rc`.
 - `gh attestation verify <wheel>` → exit 0; `gh attestation verify <sdist>` →
   exit 0; subject digests equal the table.
 - Local `dist/` is **not** the audit artifact: wheel
@@ -43,7 +43,7 @@ Status: **PASS for re-audit, no publish**. Code candidate `163f138`, branch
   `c866d9a5d74aaf15b783aee61ea6c074370b8faf6e5987c313344b3f20534b88`. The
   runbook forbids publishing them.
 
-## [4] Twelve rules — PASS
+## [4] Thirteen rules — PASS
 
 - `python -m cbp.cli --root . --v12` → 12 PASS, `blocking_failed=false`.
 - 6 blocking: CI-001, VER-001, QA-001, DEBT-001, SIGN-001, WT-001.
@@ -88,7 +88,7 @@ since the CBC/CBM validation; the release-path fix does not touch it.
   CBE/CBS names, and `.tmp-*` is ignored in every rule walk.
 - `RELEASE_RUNBOOK.md` exists and forbids `cbp-dist` and local `dist/`.
 - `git ls-files` has no `.tmp*`, `pytest-current` or `__pycache__`.
-- No GitHub Release, no PyPI upload; the stale `v1.2.0` tag at `8431712` is approved for deletion/recreation at `163f138`; PR #1 open and unmerged.
+- No GitHub Release, no PyPI upload; the `v1.2.0` tag was deleted from `163f138` and recreated at `5ebd0eb`; PR #1 open and unmerged.
 
 ## [8] Release artifact provenance — PASS
 
@@ -109,7 +109,7 @@ since the CBC/CBM validation; the release-path fix does not touch it.
 - Actual read-only preflight on 2026-11-09 (exit 0):
 
 ```text
-PREFLIGHT_OK tag=v1.2.0 ci_run=42604400520 rc_run=42603720434 commit=163f138 wheel=bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16 sdist=3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1
+PREFLIGHT_OK tag=v1.2.0 ci_run=42605522395 rc_run=42605114400 commit=5ebd0eb wheel=188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e sdist=08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd
 ```
 
 Raw: `docs/1.2.0/evidence/preflight.txt`.
@@ -117,13 +117,13 @@ Raw: `docs/1.2.0/evidence/preflight.txt`.
 ## [9] Tag / merge / run consistency — PASS
 
 - The Fast-forward path is documented and is the only supported path for this
-  RC: delete the stale `v1.2.0` tag, `merge --ff-only 163f138`, re-tag
-  `v1.2.0` at `163f138`; then
-  `tag_commit == rc_run.head_sha == ci_run.head_sha == 163f138`; the actual
-  preflight above printed `commit=163f138`.
+  RC: delete the stale `v1.2.0` tag, `merge --ff-only 5ebd0eb`, re-tag
+  `v1.2.0` at `5ebd0eb`; then
+  `tag_commit == rc_run.head_sha == ci_run.head_sha == 5ebd0eb`; the actual
+  preflight above printed `commit=5ebd0eb`.
 - `release.yml` and the preflight reject any disagreement with exit 3.
 - The runbook explicitly forbids tagging a GitHub merge commit and reusing RC
-  run `42603720434`; a merge commit would require new CI, new RC, new
+  run `42605114400`; a merge commit would require new CI, new RC, new
   attestation, and a new audit.
 
 ## Verdict

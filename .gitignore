@@ -21,3 +21,6 @@ docs/RELEASE_NOTES.generated.md
 
 # Scratch workspace for local audits; never commit.
 .tmp-*
+
+# Local audit scratch; never commit.
+.audit-*

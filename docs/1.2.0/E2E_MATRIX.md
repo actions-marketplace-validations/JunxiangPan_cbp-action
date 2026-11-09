@@ -30,6 +30,7 @@ Windows paths are passed in native form because `git -C` does not accept MSYS
 | Rule | CBP | CBS | CBE | CBM | CBC |
 | --- | --- | --- | --- | --- | --- |
 | CBP-CI-001 TEST_ROOTS_IN_CI | P | P | P | **P** | P |
+| CBP-BODY-001 RELEASE_BODY_BINDING | P | P | P | P | P |
 | CBP-VER-001 VERSION_SYNC | P | P | P | P | P |
 | CBP-QA-001 QA_COUNTS_CONSISTENT | P | P | P | P | P |
 | CBP-DEBT-001 DEBT_EVIDENCE | P | P | P | P | P |
@@ -116,7 +117,7 @@ with `package_id: "cbm"` exists.
 
 Earlier in the audit, `contract/v1.7.1` @ `5d0b100` failed CBP-WT-001 with three
 committed conflict markers in `.github/workflows/vm-proof.yml:15/16/18`. That
-finding is historical; the current CBS tip passes all twelve rules.
+finding is historical; the current CBS tip passes all thirteen rules.
 
 ## False positives found and fixed in the implementation
 

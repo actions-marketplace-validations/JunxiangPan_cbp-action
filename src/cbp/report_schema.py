@@ -256,6 +256,7 @@ def validate_manifest(
     require_producer: bool = False,
     require_body_scope: bool = False,
     expected_repository: str = "",
+    require_rc2: bool = False,
 ) -> list[str]:
     """Validate a CBP quality manifest against CONTRACT §5.
 
@@ -293,14 +294,41 @@ def validate_manifest(
     elif require_body_scope:
         problems.append("body_hash_scope: required field is missing")
     repository = manifest.get("artifact_repository")
+    repository_name = ""
     if "artifact_repository" in manifest:
-        if not isinstance(repository, str) or not repository:
-            problems.append("artifact_repository: a non-empty string is required")
-        elif expected_repository and repository != expected_repository:
-            problems.append(
-                f"artifact_repository: {repository!r} != expected {expected_repository!r} "
-                "(cross-repository artifact)"
-            )
+        if isinstance(repository, str):
+            if not repository:
+                problems.append("artifact_repository: a non-empty string is required")
+            repository_name = repository
+        elif isinstance(repository, dict):
+            missing = {"repository", "run_id", "artifact_name"} - set(repository)
+            if missing:
+                problems.append(
+                    "artifact_repository: missing " + ", ".join(sorted(missing))
+                )
+            for key in ("repository", "run_id", "artifact_name"):
+                value = repository.get(key)
+                if key in repository and (not isinstance(value, str) or not value):
+                    problems.append(f"artifact_repository.{key}: a non-empty string is required")
+            repository_name = str(repository.get("repository", "") or "")
+        else:
+            problems.append("artifact_repository: must be an object")
+    elif require_rc2:
+        problems.append("artifact_repository: required object is missing")
+    if expected_repository and repository_name and repository_name != expected_repository:
+        problems.append(
+            f"artifact_repository.repository: {repository_name!r} != expected "
+            f"{expected_repository!r} (cross-repository artifact)"
+        )
+    commit_sha = manifest.get("ci_commit_sha")
+    if "ci_commit_sha" in manifest:
+        if not isinstance(commit_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", commit_sha):
+            problems.append("ci_commit_sha: 40 lowercase hexadecimal characters required")
+    elif require_rc2:
+        problems.append("ci_commit_sha: required field is missing")
+    if require_rc2:
+        if not isinstance(manifest.get("artifact_repository"), dict):
+            problems.append("artifact_repository: RC2 requires the object form")
     gate_status = manifest.get("gate_status")
     if "gate_status" in manifest and gate_status not in REPORT_STATUS_VALUES:
         problems.append(

@@ -199,12 +199,29 @@ jobs:
         run: |
           python -m pip install --force-reinstall --no-deps rc/*.whl
           python -c "import cbp; print(cbp.__file__)"
-      - name: Remint the manifest from the audited RC hashes
+      - name: Generate the release body that will be published
+        env:
+          RELEASE_VERSION: ${{ inputs.release_tag }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          E2E_RUN_ID: ${{ inputs.e2e_run_id }}
+        run: |
+          python tools/generate_release_body.py --wheel rc/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output rc/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID"
+      - name: Remint the manifest from the RC hashes and the final body
         env:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          python tools/remint_manifest.py             --manifest artifact/quality-manifest.json             --artifact rc/*.whl --artifact rc/*.tar.gz             --expect-run-id "$CI_RUN_ID"             --expect-commit "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"             --out artifact/quality-manifest.json
+          python tools/remint_manifest.py \
+            --manifest artifact/quality-manifest.json \
+            --artifact rc/*.whl --artifact rc/*.tar.gz \
+            --release-body rc/RELEASE_BODY.md \
+            --artifact-repository "$GITHUB_REPOSITORY" \
+            --artifact-run-id "$RC_RUN_ID" \
+            --artifact-name cbp-rc \
+            --expect-run-id "$CI_RUN_ID" \
+            --expect-commit "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" \
+            --out artifact/quality-manifest.json
           (cd artifact && sha256sum quality-manifest.json > quality-manifest.json.sha256)
       - name: Verify the reminted manifest
         env:
@@ -212,22 +229,20 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           python tools/verify_manifest_artifact.py --manifest=artifact/quality-manifest.json --hash=artifact/quality-manifest.json.sha256 --notes=artifact/docs/RELEASE_NOTES.generated.md --run-id="$CI_RUN_ID" --commit-sha="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" --require-gate-pass
-      - name: Assert manifest artifact_hashes equal the RC hashes
+      - name: Assert manifest artifact and body hashes equal the RC/body
         run: |
-          python tools/remint_manifest.py --manifest artifact/quality-manifest.json --artifact rc/*.whl --artifact rc/*.tar.gz --check-only
+          python tools/remint_manifest.py --manifest artifact/quality-manifest.json --artifact rc/*.whl --artifact rc/*.tar.gz --release-body rc/RELEASE_BODY.md --check-only
+      - name: Verify manifest binds the published body
+        env:
+          CBP_BODY_MANIFEST: artifact/quality-manifest.json
+          CBP_BODY_FILE: rc/RELEASE_BODY.md
+        run: python -m cbp.cli --root . --v12 --v12-only CBP-BODY-001
       - name: Verify the RC attestations
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh attestation verify rc/*.whl --repo "$GITHUB_REPOSITORY"
           gh attestation verify rc/*.tar.gz --repo "$GITHUB_REPOSITORY"
-      - name: Generate release body from the audited RC wheel
-        env:
-          RELEASE_VERSION: ${{ inputs.release_tag }}
-          CI_RUN_ID: ${{ inputs.ci_run_id }}
-          E2E_RUN_ID: ${{ inputs.e2e_run_id }}
-        run: |
-          python tools/generate_release_body.py --wheel rc/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output rc/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID"
       - name: Generate release asset manifest from the RC bundle
         run: |
           cd rc

@@ -11,16 +11,16 @@ quality-manifest.
 
 | Item | Value |
 | --- | --- |
-| Candidate commit | `163f138` |
-| RC run | https://github.com/JunxiangPan/cbp-action/actions/runs/42603720434 |
-| CI run (manifest) | https://github.com/JunxiangPan/cbp-action/actions/runs/42604400520 |
-| e2e run | https://github.com/JunxiangPan/cbp-action/actions/runs/42603730815 |
+| Candidate commit | `5ebd0eb` |
+| RC run | https://github.com/JunxiangPan/cbp-action/actions/runs/42605114400 |
+| CI run (manifest) | https://github.com/JunxiangPan/cbp-action/actions/runs/42605522395 |
+| e2e run | https://github.com/JunxiangPan/cbp-action/actions/runs/42605121445 |
 | Artifact | `cbp-rc` |
-| wheel | `cbp_action-1.2.0-py3-none-any.whl` — `bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16` |
-| sdist | `cbp_action-1.2.0.tar.gz` — `3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1` |
-| `RC_ASSETS.sha256` | `fdeeab8283847dfcdc1f5f592fc49a394696ee2702ed23dfe0857d14f9370603` |
+| wheel | `cbp_action-1.2.0-py3-none-any.whl` — `188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e` |
+| sdist | `cbp_action-1.2.0.tar.gz` — `08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd` |
+| `RC_ASSETS.sha256` | `84041286984161db060e43b8ecf45e0462f1a7ba8a95c777546c8830483dc7c5` |
 
-The tag, RC run head and CI run head must all be candidate `163f138`. Any
+The tag, RC run head and CI run head must all be candidate `5ebd0eb`. Any
 mismatch is exit 3 and no Release is created.
 
 ## Preflight (no Release, no PyPI)
@@ -30,56 +30,56 @@ abbreviated SHA and compares it with the RC/CI heads.
 
 ```bash
 python tools/release_preflight.py \
-  --rc-run-id 42603720434 \
-  --ci-run-id 42604400520 \
+  --rc-run-id 42605114400 \
+  --ci-run-id 42605522395 \
   --tag v1.2.0 \
-  --tag-commit 163f138 \
-  --expected-wheel-sha256 bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16 \
-  --expected-sdist-sha256 3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1 \
-  --e2e-run-id 42603730815 \
+  --tag-commit 5ebd0eb \
+  --expected-wheel-sha256 188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e \
+  --expected-sdist-sha256 08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd \
+  --e2e-run-id 42605121445 \
   --repository JunxiangPan/cbp-action
 ```
 
 Actual output on 2026-11-09:
 
 ```text
-PREFLIGHT_OK tag=v1.2.0 ci_run=42604400520 rc_run=42603720434 commit=163f138 wheel=bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16 sdist=3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1
+PREFLIGHT_OK tag=v1.2.0 ci_run=42605522395 rc_run=42605114400 commit=5ebd0eb wheel=188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e sdist=08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd
 ```
 
 Raw copy: `docs/1.2.0/evidence/preflight.txt` (exit code 0).
 
 Failure handling:
 
-- `TAG_NOT_FOUND` / `rev-parse` failure: confirm `--tag-commit 163f138`; do not
+- `TAG_NOT_FOUND` / `rev-parse` failure: confirm `--tag-commit 5ebd0eb`; do not
   create a tag just to make preflight pass.
 - hash mismatch: stop. Do not edit the expected hash to make it pass.
 - RC/CI commit mismatch: stop. Do not tag.
-- quality-manifest missing: stop and inspect CI run `42604400520`.
+- quality-manifest missing: stop and inspect CI run `42605522395`.
 
 ## HUMAN ONLY — release commands (not executed)
 
 ```bash
-# v1.2.0 currently points at 8431712, which has no Release and no reminted
-# manifest. The human approved deleting and recreating it at 163f138.
+# v1.2.0 previously pointed at 163f138, which had no Release. The approved
+# sequence deletes it and recreates it at 5ebd0eb.
 git tag -d v1.2.0
 git push origin :refs/tags/v1.2.0
 
 git checkout main
-git merge --ff-only 163f138
+git merge --ff-only 5ebd0eb
 git push origin main
 
-git tag -a v1.2.0 163f138 -m "CBP v1.2.0"
+git tag -a v1.2.0 5ebd0eb -m "CBP v1.2.0"
 git push origin v1.2.0
 
 gh workflow run release.yml \
   --repo JunxiangPan/cbp-action \
   --ref v1.2.0 \
-  -f rc_run_id=42603720434 \
-  -f ci_run_id=42604400520 \
+  -f rc_run_id=42605114400 \
+  -f ci_run_id=42605522395 \
   -f release_tag=v1.2.0 \
-  -f e2e_run_id=42603730815 \
-  -f expected_wheel_sha256=bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16 \
-  -f expected_sdist_sha256=3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1
+  -f e2e_run_id=42605121445 \
+  -f expected_wheel_sha256=188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e \
+  -f expected_sdist_sha256=08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd
 ```
 
 `release.yml` downloads `cbp-rc`, verifies both hashes and `RC_ASSETS.sha256`,
@@ -93,8 +93,8 @@ exits 3 before `gh release create`. PyPI publishes the Release assets.
 
 ### Merge-commit alternative (not recommended)
 
-If a GitHub merge commit is used, its SHA differs from `163f138`. The RC run
-`42603720434` can no longer be used. You must run CI and RC again on the merge
+If a GitHub merge commit is used, its SHA differs from `5ebd0eb`. The RC run
+`42605114400` can no longer be used. You must run CI and RC again on the merge
 commit, re-attest, re-run preflight, and have the result re-audited. Do not tag a
 merge commit and reuse an older RC run.
 
@@ -126,7 +126,7 @@ local dist sdist  c866d9a5d74aaf15b783aee61ea6c074370b8faf6e5987c313344b3f20534b
    runbook.
 2. Explicit human approval to release.
 3. Run the HUMAN ONLY Fast-forward sequence above so the tag commit is
-   `163f138`.
+   `5ebd0eb`.
 4. Run the preflight command; require `PREFLIGHT_OK`.
 5. Dispatch `release.yml` with the exact inputs above.
 6. Verify the Release assets equal `bdddc74f…` / `3cee5cd8…`, the manifest `artifact_hashes` match them, PyPI digests match

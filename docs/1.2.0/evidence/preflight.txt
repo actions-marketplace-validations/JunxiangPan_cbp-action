@@ -1,13 +1,13 @@
 $ python tools/release_preflight.py \
     --rc-run-id 42603720434 \
-    --ci-run-id 42604400520 \
+    --ci-run-id 42605522395 \
     --tag v1.2.0 \
-    --tag-commit 163f138 \
-    --expected-wheel-sha256 bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16 \
-    --expected-sdist-sha256 3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1 \
+    --tag-commit 5ebd0eb \
+    --expected-wheel-sha256 188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e \
+    --expected-sdist-sha256 08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd \
     --e2e-run-id 42603730815 \
     --repository JunxiangPan/cbp-action
 
-PREFLIGHT_OK tag=v1.2.0 ci_run=42604400520 rc_run=42603720434 commit=163f138 wheel=bdddc74f828de7ae1beae3b484ece5ddb2986620585985b0f24c9b6897701e16 sdist=3cee5cd8309533d3b809cdadeea7dd73cf2fc32dda268f9b912c0dfe751335b1
+PREFLIGHT_OK tag=v1.2.0 ci_run=42605522395 rc_run=42603720434 commit=5ebd0eb wheel=188639bb47e5a8940defbdb5ba3c4270ae89ad68503d283b611cb2a00497da2e sdist=08392b2af6b3ff29dc21cfe5db0f23d628307ccac06b9035639f32da6343defd
 
 exit code: 0

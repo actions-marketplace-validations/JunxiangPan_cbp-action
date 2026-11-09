@@ -29,7 +29,8 @@ def _manifest(**overrides) -> dict:
 def test_manifest_records_body_scope_and_repository() -> None:
     manifest = _manifest(artifact_repository="owner/repo")
     assert manifest["body_hash_scope"] == "base"
-    assert manifest["artifact_repository"] == "owner/repo"
+    assert manifest["artifact_repository"]["repository"] == "owner/repo"
+    assert manifest["artifact_repository"]["artifact_name"] == "cbp-dist"
     assert report_schema.validate_manifest(manifest) == []
 
 

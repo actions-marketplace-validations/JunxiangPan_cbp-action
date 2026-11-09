@@ -42,6 +42,12 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, str, str]:
         "release_body_hash": "a" * 64,
         "evidence_sha256": "b" * 64,
         "body_hash_scope": "base",
+        "ci_commit_sha": "a" * 40,
+        "artifact_repository": {
+            "repository": "JunxiangPan/cbp-action",
+            "run_id": "42602640952",
+            "artifact_name": "cbp-rc",
+        },
     }
     manifest_path = artifact / "quality-manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")

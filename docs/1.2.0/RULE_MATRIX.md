@@ -22,7 +22,7 @@ Branch for this work: `1.2.0-dev`. The `v1.1.0` tag and assets are never moved.
 1. `body_hash_scope: "base"` in the quality manifest, CLI, and validation.
 2. `artifact_repository` in the manifest, CLI, and cross-repository validation.
 3. cbc-event 0.1.x JSONL emission (config, token/HMAC, rate limit, default off).
-4. Twelve rules (CBP-CI-001 … CBP-SLOP-001).
+4. Thirteen rules (CBP-CI-001 … CBP-SLOP-001 plus CBP-BODY-001).
 5. Real-repository E2E (read-only) over CBS/CBE/CBM/CBC tips.
 6. RC artifacts + audit package. **No publish.**
 
@@ -58,6 +58,7 @@ Severity: **B** = blocking (1.2.0), **W** = warning + baseline (1.2.0), blocking
 | CBP-QA-001 | `QA_COUNTS_CONSISTENT` | B | declared counts ≠ row statuses; `Covered: 0` contradicts coverage disclosure | `qa_consistent` / `qa_count_mismatch` / `qa_covered_zero_with_coverage` | implemented |
 | CBP-DEBT-001 | `DEBT_EVIDENCE` | B | FIXED / NOT_FIXED entry has no file or number | `debt_with_evidence` / `debt_without_evidence` / `debt_word_in_prose` | implemented |
 | CBP-SIGN-001 | `SIGN_TOOLS_IN_TAG` | B | sign workflow references a script absent from the tag tree | `sign_tools_present` / `sign_tool_missing` / `script_in_comment` | implemented |
+| CBP-BODY-001 | `RELEASE_BODY_BINDING` | B | manifest `release_body_hash` != canonical actual body | `body_v120_fail` / `body_v121_pass` / `body_newline_guard` | implemented |
 | CBP-WT-001 | `WORKTREE_CLEAN_AFTER_GATES` | B | tracked files changed by a gate run, or a tracked file contains a conflict marker (`<<<<<<<`, `>>>>>>>`, `|||||||`, or `=======` inside a conflict) | `wt_clean` / `wt_dirty` / `untracked_only`; `wt_conflict_marker` / `wt_end_marker` / `wt_separator_only` / `wt_untracked_marker` | implemented |
 | CBP-BIN-001 | `BINARY_AUTHENTICODE` | W | installer exe unsigned and no waiver | `exe_signed` / `exe_unsigned` / `no_exe` | implemented |
 | CBP-DOC-001 | `DOC_REFERENCES_EXIST` | W | doc references a missing test/file path | `doc_refs_ok` / `doc_ref_missing` / `example_path` | implemented |
@@ -130,7 +131,7 @@ always returns a string.
 same CONTRACT §5 fields that `dogfood_manifest` writes for CBP itself:
 `artifact_hashes`, `release_body_hash`, `evidence_sha256`, `body_hash_scope`,
 gate counts and gates. It does not add a thirteenth rule and does not change the
-twelve-rule exit-code model.
+thirteen-rule exit-code model.
 
 Real E2E: CBC `validate_cbp` PASS on a generated `package_id: "cbc"` manifest
 built from a target-scoped gate report (`package_id=cbc`, `producer_id=cbp`,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cbp-action"
-version = "1.2.0"
+version = "1.2.2"
 description = "Reusable repository quality gates for GitHub Actions and local CI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,7 @@ test = [
   "certifi>=2024.0",
   "cel-python>=0.5.0",
   "coverage>=7.6",
+  "jsonschema>=4.20",
 ]
 
 [tool.setuptools.package-data]
