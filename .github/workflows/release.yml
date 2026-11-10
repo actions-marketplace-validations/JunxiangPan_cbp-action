@@ -35,6 +35,8 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.release_tag }}
           fetch-depth: 0
+      - name: Verify quality gate manifest
+        run: python tools/verify_gate_manifest.py quality/GATES.sha256
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.12"
@@ -90,6 +92,8 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.release_tag }}
           fetch-depth: 0
+      - name: Verify quality gate manifest
+        run: python tools/verify_gate_manifest.py quality/GATES.sha256
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.12"
@@ -159,6 +163,8 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.release_tag }}
           fetch-depth: 0
+      - name: Verify quality gate manifest
+        run: python tools/verify_gate_manifest.py quality/GATES.sha256
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.12"
@@ -205,7 +211,7 @@ jobs:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
           E2E_RUN_ID: ${{ inputs.e2e_run_id }}
         run: |
-          python tools/generate_release_body.py --wheel rc/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output rc/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID"
+          python tools/generate_release_body.py --wheel rc/*.whl --version "$RELEASE_VERSION" --notes artifact/docs/RELEASE_NOTES.generated.md --output rc/RELEASE_BODY.md --ci-run "$CI_RUN_ID" --e2e-run "$E2E_RUN_ID" --double-build-run "$CI_RUN_ID" --sarif-run "$CI_RUN_ID" --signed-keyless
       - name: Remint the manifest from the RC hashes and the final body
         env:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
@@ -237,6 +243,57 @@ jobs:
           CBP_BODY_MANIFEST: artifact/quality-manifest.json
           CBP_BODY_FILE: rc/RELEASE_BODY.md
         run: python -m cbp.cli --root . --v12 --v12-only CBP-BODY-001
+      - name: Generate the signed provenance sidecar
+        env:
+          RC_RUN_ID: ${{ inputs.rc_run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          COMMIT=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          python tools/provenance.py create \
+            --manifest artifact/quality-manifest.json \
+            --artifact rc/*.whl --artifact rc/*.tar.gz \
+            --output-dir provenance \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$RC_RUN_ID" --tag "$RELEASE_TAG" --commit "$COMMIT" \
+            --generated-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --keyless
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532
+        with:
+          cosign-release: "v2.4.1"
+      - name: Sign release blobs with GitHub OIDC keyless cosign
+        run: |
+          mkdir -p signatures
+          for file in rc/*.whl rc/*.tar.gz artifact/quality-manifest.json provenance/provenance.json; do
+            name=$(basename "$file")
+            cosign sign-blob --yes \
+              --bundle "signatures/$name.bundle" \
+              --output-signature "signatures/$name.sig" \
+              --output-certificate "signatures/$name.pem" \
+              "$file"
+          done
+          cosign attest-blob --yes --predicate provenance/predicate.json --type slsaprovenance1 --bundle signatures/attestation.json rc/*.whl
+          cosign attest-blob --yes --predicate provenance/predicate.json --type slsaprovenance1 --bundle signatures/attestation-sdist.json rc/*.tar.gz
+      - name: Verify keyless signatures and attestations
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/${RELEASE_TAG}"
+          ISSUER="https://token.actions.githubusercontent.com"
+          for file in rc/*.whl rc/*.tar.gz artifact/quality-manifest.json provenance/provenance.json; do
+            name=$(basename "$file")
+            cosign verify-blob --bundle "signatures/$name.bundle" \
+              --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER" "$file"
+          done
+          cosign verify-blob-attestation --bundle signatures/attestation.json --type slsaprovenance1 \
+            --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER" rc/*.whl
+          cosign verify-blob-attestation --bundle signatures/attestation-sdist.json --type slsaprovenance1 \
+            --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER" rc/*.tar.gz
+          python tools/provenance.py verify \
+            --provenance provenance/provenance.json \
+            --manifest artifact/quality-manifest.json \
+            --artifact rc/*.whl --artifact rc/*.tar.gz \
+            --bundle-dir signatures \
+            --identity-regexp "$IDENTITY" \
+            --oidc-issuer "$ISSUER"
       - name: Verify the RC attestations
         env:
           GH_TOKEN: ${{ github.token }}
@@ -246,7 +303,7 @@ jobs:
       - name: Generate release asset manifest from the RC bundle
         run: |
           cd rc
-          sha256sum *.whl *.tar.gz ../artifact/quality-manifest.json ../artifact/quality-manifest.json.sha256 ../artifact/docs/RELEASE_NOTES.generated.md | awk '{n=$2; sub(/.*\//,"",n); print $1 " *" n}' > RELEASE_ASSETS.sha256
+          sha256sum *.whl *.tar.gz ../artifact/quality-manifest.json ../artifact/quality-manifest.json.sha256 ../artifact/docs/RELEASE_NOTES.generated.md ../provenance/provenance.json ../provenance/predicate.json ../signatures/* | awk '{n=$2; sub(/.*\//,"",n); print $1 " *" n}' > RELEASE_ASSETS.sha256
       - name: Expose the release asset manifest to the AI gate
         run: |
           mkdir -p dist
@@ -271,7 +328,7 @@ jobs:
         run: |
           case "$RELEASE_TAG" in (v[0-9]*.[0-9]*.[0-9]*) ;; (*) echo "invalid release_tag" >&2; exit 2;; esac
           test -f artifact/docs/RELEASE_NOTES.generated.md
-          gh release create "$RELEASE_TAG" rc/*.whl rc/*.tar.gz rc/RELEASE_ASSETS.sha256 artifact/quality-manifest.json artifact/quality-manifest.json.sha256 artifact/docs/RELEASE_NOTES.generated.md --notes-file rc/RELEASE_BODY.md
+          gh release create "$RELEASE_TAG" rc/*.whl rc/*.tar.gz rc/RELEASE_ASSETS.sha256 artifact/quality-manifest.json artifact/quality-manifest.json.sha256 artifact/docs/RELEASE_NOTES.generated.md provenance/provenance.json provenance/predicate.json signatures/* --notes-file rc/RELEASE_BODY.md
       - name: Verify published release body and asset inventory
         env:
           GH_TOKEN: ${{ github.token }}

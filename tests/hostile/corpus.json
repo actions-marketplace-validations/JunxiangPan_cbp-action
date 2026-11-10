@@ -1,0 +1,360 @@
+[
+  {
+    "id": "composite_action-01",
+    "category": "composite_action",
+    "target": "action_input",
+    "payload": "${{ github.event.pull_request.title }}",
+    "expect": "FAIL"
+  },
+  {
+    "id": "composite_action-02",
+    "category": "composite_action",
+    "target": "action_input",
+    "payload": "x;curl evil",
+    "expect": "FAIL"
+  },
+  {
+    "id": "composite_action-03",
+    "category": "composite_action",
+    "target": "action_input",
+    "payload": "a|b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "composite_action-04",
+    "category": "composite_action",
+    "target": "action_input",
+    "payload": "a`id`",
+    "expect": "FAIL"
+  },
+  {
+    "id": "composite_action-05",
+    "category": "composite_action",
+    "target": "action_input",
+    "payload": "a\nb",
+    "expect": "FAIL"
+  },
+  {
+    "id": "checkout_ref-06",
+    "category": "checkout_ref",
+    "target": "checkout_ref",
+    "payload": "refs/heads/main;id",
+    "expect": "FAIL"
+  },
+  {
+    "id": "checkout_ref-07",
+    "category": "checkout_ref",
+    "target": "checkout_ref",
+    "payload": "main$(id)",
+    "expect": "FAIL"
+  },
+  {
+    "id": "checkout_ref-08",
+    "category": "checkout_ref",
+    "target": "checkout_ref",
+    "payload": "../main",
+    "expect": "FAIL"
+  },
+  {
+    "id": "checkout_ref-09",
+    "category": "checkout_ref",
+    "target": "checkout_ref",
+    "payload": "-c",
+    "expect": "FAIL"
+  },
+  {
+    "id": "checkout_ref-10",
+    "category": "checkout_ref",
+    "target": "checkout_ref",
+    "payload": "main\n",
+    "expect": "FAIL"
+  },
+  {
+    "id": "permissions-11",
+    "category": "permissions",
+    "target": "workflow_permissions",
+    "payload": "write-all",
+    "expect": "FAIL"
+  },
+  {
+    "id": "permissions-12",
+    "category": "permissions",
+    "target": "workflow_permissions",
+    "payload": {
+      "contents": "write"
+    },
+    "expect": "FAIL"
+  },
+  {
+    "id": "permissions-13",
+    "category": "permissions",
+    "target": "workflow_permissions",
+    "payload": {
+      "id-token": "read"
+    },
+    "expect": "FAIL"
+  },
+  {
+    "id": "permissions-14",
+    "category": "permissions",
+    "target": "workflow_permissions",
+    "payload": {
+      "actions": "write"
+    },
+    "expect": "FAIL"
+  },
+  {
+    "id": "permissions-15",
+    "category": "permissions",
+    "target": "workflow_permissions",
+    "payload": {
+      "unknown": "read"
+    },
+    "expect": "FAIL"
+  },
+  {
+    "id": "artifact_name-16",
+    "category": "artifact_name",
+    "target": "artifact_name",
+    "payload": "cbp-rc;rm -rf /",
+    "expect": "FAIL"
+  },
+  {
+    "id": "artifact_name-17",
+    "category": "artifact_name",
+    "target": "artifact_name",
+    "payload": "../cbp-rc",
+    "expect": "FAIL"
+  },
+  {
+    "id": "artifact_name-18",
+    "category": "artifact_name",
+    "target": "artifact_name",
+    "payload": "a/b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "artifact_name-19",
+    "category": "artifact_name",
+    "target": "artifact_name",
+    "payload": "a\\b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "artifact_name-20",
+    "category": "artifact_name",
+    "target": "artifact_name",
+    "payload": "CON",
+    "expect": "FAIL"
+  },
+  {
+    "id": "artifact_name-21",
+    "category": "artifact_name",
+    "target": "artifact_name",
+    "payload": "a b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "tar_slip-22",
+    "category": "tar_slip",
+    "target": "relative_path",
+    "payload": "../etc/passwd",
+    "expect": "FAIL"
+  },
+  {
+    "id": "tar_slip-23",
+    "category": "tar_slip",
+    "target": "relative_path",
+    "payload": "/etc/passwd",
+    "expect": "FAIL"
+  },
+  {
+    "id": "tar_slip-24",
+    "category": "tar_slip",
+    "target": "relative_path",
+    "payload": "C:\\Windows",
+    "expect": "FAIL"
+  },
+  {
+    "id": "tar_slip-25",
+    "category": "tar_slip",
+    "target": "relative_path",
+    "payload": "\\server\\share",
+    "expect": "FAIL"
+  },
+  {
+    "id": "tar_slip-26",
+    "category": "tar_slip",
+    "target": "relative_path",
+    "payload": "a/../../b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "tar_slip-27",
+    "category": "tar_slip",
+    "target": "relative_path",
+    "payload": "..",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-28",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "a\r\nb",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-29",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "a\rb",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-30",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "café​",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-31",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "é",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-32",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "a‮b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-33",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "a​b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-34",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "a\u0000b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "crlf_unicode-35",
+    "category": "crlf_unicode",
+    "target": "unicode_text",
+    "payload": "ab",
+    "expect": "FAIL"
+  },
+  {
+    "id": "case_backslash-36",
+    "category": "case_backslash",
+    "target": "artifact_name",
+    "payload": "Foo\\Bar",
+    "expect": "FAIL"
+  },
+  {
+    "id": "case_backslash-37",
+    "category": "case_backslash",
+    "target": "artifact_name",
+    "payload": "CON",
+    "expect": "FAIL"
+  },
+  {
+    "id": "case_backslash-38",
+    "category": "case_backslash",
+    "target": "artifact_name",
+    "payload": "NUL.txt",
+    "expect": "FAIL"
+  },
+  {
+    "id": "case_backslash-39",
+    "category": "case_backslash",
+    "target": "artifact_name",
+    "payload": "a\\..\\",
+    "expect": "FAIL"
+  },
+  {
+    "id": "case_backslash-40",
+    "category": "case_backslash",
+    "target": "artifact_name",
+    "payload": "aux",
+    "expect": "FAIL"
+  },
+  {
+    "id": "case_backslash-41",
+    "category": "case_backslash",
+    "target": "artifact_name",
+    "payload": "a//b",
+    "expect": "FAIL"
+  },
+  {
+    "id": "invalid_json-42",
+    "category": "invalid_json",
+    "target": "strict_json",
+    "payload": "{\"a\":1,\"a\":2}",
+    "expect": "FAIL"
+  },
+  {
+    "id": "invalid_json-43",
+    "category": "invalid_json",
+    "target": "strict_json",
+    "payload": "{\"a\":",
+    "expect": "FAIL"
+  },
+  {
+    "id": "invalid_json-44",
+    "category": "invalid_json",
+    "target": "strict_json",
+    "payload": "[1,",
+    "expect": "FAIL"
+  },
+  {
+    "id": "invalid_json-45",
+    "category": "invalid_json",
+    "target": "strict_json",
+    "payload": "{\"a\":1,}",
+    "expect": "FAIL"
+  },
+  {
+    "id": "invalid_json-46",
+    "category": "invalid_json",
+    "target": "strict_json",
+    "payload": "NaN",
+    "expect": "FAIL"
+  },
+  {
+    "id": "invalid_json-47",
+    "category": "invalid_json",
+    "target": "strict_json",
+    "payload": "{\"a\":\"\\u0000\"}",
+    "expect": "FAIL"
+  },
+  {
+    "id": "misc-48",
+    "category": "misc",
+    "target": "artifact_name",
+    "payload": "⁦a",
+    "expect": "FAIL"
+  },
+  {
+    "id": "misc-49",
+    "category": "misc",
+    "target": "artifact_name",
+    "payload": "dir/\\file",
+    "expect": "FAIL"
+  },
+  {
+    "id": "misc-50",
+    "category": "misc",
+    "target": "artifact_name",
+    "payload": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expect": "FAIL"
+  }
+]

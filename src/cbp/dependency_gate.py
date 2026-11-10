@@ -3,6 +3,7 @@ from __future__ import annotations
 
 RULE_ID = "CBP-DEP-001"
 
+import hashlib
 import re
 
 from .config import GateConfig
@@ -66,6 +67,12 @@ def _detect(cfg: GateConfig) -> tuple[bool, str]:
     installer = cfg.path(cfg.install_command)
     if not lock.is_file():
         return False, f"{cfg.dependency_lock} is missing"
+    lock_digest = lock.with_name(lock.name + ".sha256")
+    if lock_digest.is_file():
+        expected = lock_digest.read_text(encoding="utf-8").strip().split()[0].lower()
+        actual = hashlib.sha256(lock.read_bytes()).hexdigest()
+        if expected != actual:
+            return False, "dependency lock changed since it was approved"
     pins, problem = _pins(lock.read_text(encoding="utf-8"))
     if problem:
         return False, problem

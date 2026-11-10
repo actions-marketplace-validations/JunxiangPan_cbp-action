@@ -59,7 +59,7 @@ class InfraError(RuntimeError):
 
 GATE_STATUS_VALUES = frozenset(status.value for status in GateStatus)
 #: Statuses allowed on a whole report / manifest.
-REPORT_STATUS_VALUES = frozenset({"PASS", "FAIL", "SKIPPED_INFRA", "PRECONDITION_FAIL"})
+REPORT_STATUS_VALUES = frozenset({"PASS", "FAIL", "SKIPPED_INFRA", "PRECONDITION_FAIL", "NOT_UPLOADED"})
 #: Statuses allowed on a single gate entry.
 GATE_ENTRY_STATUS_VALUES = frozenset({"PASS", "FAIL", "SKIPPED"})
 
@@ -70,7 +70,7 @@ _EXIT_CODES_BY_STATUS = {
     "PRECONDITION_FAIL": frozenset({EXIT_INPUT, EXIT_GATE}),
     # Per-gate states never travel as a report status.
     "SKIPPED": frozenset(),
-    "NOT_UPLOADED": frozenset(),
+    "NOT_UPLOADED": frozenset({EXIT_PASS, EXIT_GATE}),
 }
 
 

@@ -1,0 +1,12 @@
+[
+  {"id": "INC-001", "label": "incident", "flagged": true, "summary": "release body claimed a tag that did not exist"},
+  {"id": "INC-002", "label": "incident", "flagged": true, "summary": "manifest artifact hash did not match the wheel"},
+  {"id": "INC-003", "label": "incident", "flagged": true, "summary": "stale docs pointer on a release tag"},
+  {"id": "INC-004", "label": "incident", "flagged": true, "summary": "Release body edited after publication"},
+  {"id": "INC-005", "label": "incident", "flagged": true, "summary": "skip ratio exceeded 20% without a waiver"},
+  {"id": "INC-006", "label": "incident", "flagged": false, "summary": "missing signature sidecar was shipped unsigned"},
+  {"id": "INC-007", "label": "clean", "flagged": false, "summary": "normal release with matching hashes"},
+  {"id": "INC-008", "label": "clean", "flagged": false, "summary": "docs-only commit after the release tag"},
+  {"id": "INC-009", "label": "clean", "flagged": false, "summary": "intentional NOT_UPLOADED attachment"},
+  {"id": "INC-010", "label": "clean", "flagged": true, "summary": "false positive on a legacy fixture"}
+]

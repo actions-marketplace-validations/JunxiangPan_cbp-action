@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.3.2 — 2026-11-11
+
+- GitHub OIDC keyless signing with cosign/sigstore (no long-lived private key).
+- Release assets include `.bundle`, `.sig` and `.pem` for the wheel, sdist,
+  quality manifest and provenance; wheel/sdist attestations are attached.
+- The keyless workflow verifies every signature with
+  `--certificate-identity` and
+  `--certificate-oidc-issuer https://token.actions.githubusercontent.com`
+  before publishing; the provenance verifier also requires the cosign bundle.
+- Release notes state **SIGNED via GitHub OIDC keyless**; unsigned is no longer
+  claimed for 1.3.2. If OIDC is unavailable the workflow stops and no Release
+  or PyPI upload occurs.
+- No gate semantics, frozen schema, 20% skip threshold or body-hash rules are
+  changed. v1.3.1 remains unsigned and is not re-signed or moved.
+
+## 1.3.1 — 2026-11-11
+
+- Adds the real `cbp-gate` job to `cbp-ci` (job name exactly `cbp-gate`):
+  runs `python -m cbp.cli --root . --v12` (13 production rules) and verifies
+  `quality/GATES.sha256`. It is not in e2e-payload and has no
+  continue-on-error.
+- No change to the frozen quality-manifest shape, exit codes, 20% skip
+  threshold, body-hash semantics, or CBP-BODY-001.
+- Release remains **UNSIGNED / BLOCKED_NO_SIGNING_IDENTITY**; no signature is
+  fabricated and release text must not claim signed provenance.
+- v1.3.0 tag/Release remain in place but are not the CBE cross-review basis;
+  v1.3.1 is the release containing the real gate job.
+
+## 1.3.0 — 2026-11-10
+
+- CBP-MUT-01: mutation harness (`tests/mutation/`) with 12 known mutants across
+  coverage/allowlist, dependency lock, docs, binary provenance, claims, body
+  binding and artifacts; 12/12 detected (100% recall).
+- CBP-ATK-01: 50-entry hostile corpus covering action inputs, checkout refs,
+  permissions, artifact names, tar slip, CRLF/Unicode, case/backslash and JSON.
+- CBP-TRUST-01: opt-in SLSA-shaped provenance sidecar + offline verifier.
+  Signing is **BLOCKED_NO_SIGNING_IDENTITY**; no signature is fabricated.
+- CBP-SELF-01: `quality/GATES.sha256` protects gate scripts and workflows;
+  CI/release verify it; tamper tests turn red.
+- CBP-CONTRACT-01: frozen schema/exit/status/body/skip-ratio tests.
+- CBP-DEP-01: lock integrity sidecars, tag-move detection, full-SHA action pins.
+- CBP-WIN-01: Windows path/CRLF/reserved-name/short-name tests.
+- CBP-AI-01: shadow-mode backtest, precision/recall reported, never blocking.
+- CBP-THREAT-01: threat model and CBE/CBS boundary.
+- CBP-SBOM-01: CycloneDX generator for CBP itself.
+- No frozen quality-manifest fields were added; new artifacts are sidecars and
+  opt-in tools. Old v1.2.x tags and assets are untouched.
+
 ## 1.2.2 — 2026-11-09
 
 CBP follows CONTRACT v1.7.1 RC2 (`contract/v1.7.1` at `6835789`, NOT FROZEN).

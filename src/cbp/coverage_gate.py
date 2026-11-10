@@ -160,6 +160,12 @@ def run(cfg: GateConfig) -> tuple[bool, str]:
     allowlist = cfg.path(cfg.coverage_allowlist)
     if not coverage.is_file() or not allowlist.is_file():
         return False, "coverage.json or coverage_allowlist.json is missing"
+    allowlist_digest = Path(str(allowlist) + ".sha256")
+    if allowlist_digest.is_file():
+        expected = allowlist_digest.read_text(encoding="utf-8").strip().split()[0].lower()
+        actual = hashlib.sha256(allowlist.read_bytes()).hexdigest()
+        if expected != actual:
+            return False, "coverage allowlist changed since it was approved"
     if getattr(cfg, "require_coverage_signature", False):
         signature = cfg.path(getattr(cfg, "coverage_signature", "") or (str(coverage) + ".sha256"))
         if not signature.is_file():

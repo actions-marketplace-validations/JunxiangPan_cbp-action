@@ -26,6 +26,7 @@ def main() -> int:
     parser.add_argument("--summary", default="")
     parser.add_argument("--python310", default="PASS (tested in the OS x Python matrix)")
     parser.add_argument("--infra-failure", action="append", default=[], metavar="TEXT")
+    parser.add_argument("--signed-keyless", action="store_true")
     args = parser.parse_args()
     wheel = Path(args.wheel)
     notes = Path(args.notes).read_text(encoding="utf-8")
@@ -38,6 +39,22 @@ def main() -> int:
         return f"https://github.com/{args.repo}/actions/runs/{run}" if run else "not recorded"
 
     summary = args.summary or f"Release evidence for v{version}."
+    if args.signed_keyless:
+        provenance_section = (
+            "**SIGNED via GitHub OIDC keyless (cosign/sigstore).**\n\n"
+            "- No long-lived private key was used.\n"
+            "- Verify with `cosign verify-blob --bundle <file>.bundle "
+            "--certificate-identity-regexp <release-workflow-identity> "
+            "--certificate-oidc-issuer https://token.actions.githubusercontent.com <file>`.\n"
+            "- The signature bundles, certificates and attestations are attached to the Release."
+        )
+    else:
+        provenance_section = (
+            "**UNSIGNED — BLOCKED_NO_SIGNING_IDENTITY.**\n\n"
+            "- `provenance.json` and `provenance.sig` are sidecars; no cryptographic signature exists.\n"
+            "- The offline verifier exits 4 for this release.\n"
+            "- Do not describe these artifacts as signed, sigstore-verified, or SLSA-verified."
+        )
 
     def evidence(run: str, claim: str = "PASS") -> str:
         return f"{link(run)} {claim}" if run else "not recorded"
@@ -72,6 +89,9 @@ sha256: {digest}
 
 https://pypi.org/project/cbp-action/{version}/
 
+## Provenance
+
+{provenance_section}
 ## Section A: Security regression (blocking)
 
 - main CI: {evidence(args.ci_run)}
