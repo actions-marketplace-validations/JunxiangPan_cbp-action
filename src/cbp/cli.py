@@ -198,6 +198,20 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
     parser.add_argument("--cbc-event-dir", default="")
     parser.add_argument("--cbc-event-max", type=int, default=1000)
     parser.add_argument("--cbc-event-hmac-env", default="")
+    parser.add_argument("--profile", choices=("default", "strict"), default="default")
+    parser.add_argument("--provenance", default="provenance.json")
+    parser.add_argument("--bundle-dir", default="signatures")
+    parser.add_argument("--strict-artifact", action="append", default=[])
+    parser.add_argument("--identity-regexp", default="")
+    parser.add_argument("--oidc-issuer", default="https://token.actions.githubusercontent.com")
+    parser.add_argument("--tags-expected", default="docs/tags-expected.json")
+    parser.add_argument("--sbom", default="docs/1.4.0/SBOM.json")
+    parser.add_argument("--mutation-report", default="docs/1.3.0/MUTATION_REPORT.md")
+    parser.add_argument("--hostile-corpus", default="tests/hostile/corpus.json")
+    parser.add_argument("--gate-manifest", default="quality/GATES.sha256")
+    parser.add_argument("--strict-lockfile", default="requirements-test.lock")
+    parser.add_argument("--strict-installer", default="install-test.sh")
+    parser.add_argument("--strict-report", default="strict-profile.json")
     parser.add_argument("--v12", action="store_true")
     parser.add_argument("--v12-report", default="")
     parser.add_argument("--v12-only", default="")
@@ -294,6 +308,31 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
         value = getattr(args, key)
         if value is not None:
             overrides[key] = value
+    if args.profile == "strict":
+        from .strict_profile import StrictOptions, run as strict_run
+        if not args.identity_regexp:
+            print(json.dumps({"profile": "strict", "passed": False,
+                              "error": "identity_regexp required for signed provenance"},
+                             ensure_ascii=False))
+            return report_schema.EXIT_INPUT
+        return strict_run(StrictOptions(
+            root=Path(args.root),
+            manifest=Path(args.manifest) if args.manifest else Path("quality-manifest.json"),
+            provenance=Path(args.provenance),
+            bundle_dir=Path(args.bundle_dir),
+            artifacts=tuple(Path(item) for item in args.strict_artifact),
+            identity_regexp=args.identity_regexp,
+            oidc_issuer=args.oidc_issuer,
+            tags_expected=Path(args.tags_expected),
+            sbom=Path(args.sbom),
+            mutation_report=Path(args.mutation_report),
+            hostile_corpus=Path(args.hostile_corpus),
+            gate_manifest=Path(args.gate_manifest),
+            lockfile=Path(args.strict_lockfile),
+            installer=Path(args.strict_installer),
+            report=Path(args.strict_report),
+        ))
+
     if args.v12:
         from . import v12_rules
         only = {item.strip() for item in args.v12_only.split(",") if item.strip()} if args.v12_only else None

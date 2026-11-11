@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0 — 2026-11-11 (development)
+
+- Adds the opt-in `--profile strict` evidence profile. The default 1.3.2 path
+  is unchanged.
+- Strict requires signed provenance (cosign-verified), `quality/GATES.sha256`,
+  mutation recall >= 95%, >= 50 hostile cases, deterministic fuzz, full-SHA
+  action pins, lockfile integrity, tag-map immutability, Windows CI, CycloneDX
+  SBOM, and the external provenance verifier.
+- Strict writes only the sidecar `strict-profile.json`; the frozen
+  quality-manifest schema, exit codes, 20% skip threshold and CBP-BODY-001 are
+  unchanged.
+- Adds ADR, threat model, trust boundary, non-goals and strict usage docs.
+- Not released, not tagged, not published.
+
 ## 1.3.2 — 2026-11-11
 
 - GitHub OIDC keyless signing with cosign/sigstore (no long-lived private key).

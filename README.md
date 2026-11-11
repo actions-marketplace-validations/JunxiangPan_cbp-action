@@ -514,6 +514,14 @@ the artifact-integrity check with exit 2 and the message
 a comment if you want the readable version. `usage.yml`, `docs/` and `examples/`
 are documentation and are not scanned.
 
+## Strict profile (1.4.0, opt-in)
+
+`--profile strict` requires signed provenance (cosign/OIDC), the gate manifest,
+mutation/hostile/fuzz evidence, full-SHA action pins, lockfile integrity, tag
+map immutability, Windows CI, an SBOM and the external provenance verifier. It
+writes a `strict-profile.json` sidecar and never changes the quality-manifest
+schema or the default 1.3.2 behavior. See `docs/1.4.0/STRICT_PROFILE.md`.
+
 ## Releasing
 
 See [`RELEASING.md`](RELEASING.md) for the commit -> CI -> tag -> release order.
