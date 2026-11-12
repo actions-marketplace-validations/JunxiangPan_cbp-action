@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "package_id": "cbf",
+  "producer_id": "cbf",
+  "version": "v0.1.0rc1",
+  "gate_status": "PASS",
+  "exit_code": 0,
+  "applicable_gate_count": 4,
+  "skip_count": 0,
+  "skip_ratio": 0.0,
+  "blocking_skip": false,
+  "gates": [
+    {
+      "name": "scan-all",
+      "status": "PASS",
+      "reason": "CBF release check exit 0"
+    },
+    {
+      "name": "git-staged",
+      "status": "PASS",
+      "reason": "CBF release check exit 0"
+    },
+    {
+      "name": "release-artifacts",
+      "status": "PASS",
+      "reason": "CBF release check exit 0"
+    },
+    {
+      "name": "verify-evidence",
+      "status": "PASS",
+      "reason": "CBF release check exit 0"
+    }
+  ]
+}

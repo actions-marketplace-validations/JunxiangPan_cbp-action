@@ -1,0 +1,39 @@
+{
+  "applicable_gate_count": 4,
+  "artifact_hashes": {
+    "cbf-0.1.0rc1-py3-none-any.whl": "3c8faa174fdfa5a6fcd69157f566dde7ac2b11bbd4d164b2ecb7badbe8190060"
+  },
+  "blocking_skip": false,
+  "body_hash_scope": "base",
+  "evidence_sha256": "0dbc6a6b5900415ad9910d071d46c0f79c989de7a10cb1c23ab5294895dcc70a",
+  "gate_status": "PASS",
+  "gates": [
+    {
+      "name": "scan-all",
+      "reason": "CBF release check exit 0",
+      "status": "PASS"
+    },
+    {
+      "name": "git-staged",
+      "reason": "CBF release check exit 0",
+      "status": "PASS"
+    },
+    {
+      "name": "release-artifacts",
+      "reason": "CBF release check exit 0",
+      "status": "PASS"
+    },
+    {
+      "name": "verify-evidence",
+      "reason": "CBF release check exit 0",
+      "status": "PASS"
+    }
+  ],
+  "package_id": "cbf",
+  "producer_id": "cbf",
+  "release_body_hash": "29b4f9e77843fe2bef19ffd76f93bc9a81df5035250154437781bda8d6ea72f0",
+  "schema_version": "1",
+  "skip_count": 0,
+  "skip_ratio": 0.0,
+  "version": "v0.1.0rc1"
+}

@@ -514,6 +514,13 @@ the artifact-integrity check with exit 2 and the message
 a comment if you want the readable version. `usage.yml`, `docs/` and `examples/`
 are documentation and are not scanned.
 
+## Quality / AI evidence gates (1.5.0, opt-in)
+
+CBP 1.5.0 adds opt-in `--target-mutation`, `--test-quality` and
+`--ai-evidence` gates. They are independent of CBE, do not change the default
+1.4.0 behavior, and never modify the frozen quality manifest. See
+`docs/1.5.0/QUALITY_GATES.md`.
+
 ## Strict profile (1.4.0, opt-in)
 
 `--profile strict` requires signed provenance (cosign/OIDC), the gate manifest,
@@ -575,3 +582,17 @@ Every other job downloads the `cbp-dist` artifact.
 ## VM-only evidence
 
 VM-only chaos evidence remains an explicit gap. v1.2.0 is backed by CI, RC attestation and consumer parity, not by a VM acceptance report; do not describe CI evidence as VM acceptance.
+
+## CBF privacy gate (Phase 0)
+
+**CBF is not integrated yet.** Status: `PENDING_CBF_0.1.0`; there is **no CBF
+PASS** for this project or its releases. The `cbf-privacy-gate` job name is
+reserved as a name only; no workflow file is added in Phase 0. No
+`continue-on-error` / `if: false` bypass exists. See [`docs/CBF_ADOPTION.md`](docs/CBF_ADOPTION.md).
+
+Once CBF 0.1.0rc1 is available, this project must pin a CBF policy and run
+`cbf gate --surface git` before tag / GitHub Release / PyPI upload. CBF is a
+pre-release gate, not a replacement for CBP's coverage, dependency, docs,
+binary or claims gates. A `cbf-evidence/v1` sidecar is optional and must not
+change the frozen quality-manifest schema. Until CBF is available, do not
+describe the project as CBF-compatible or CBF-passed.

@@ -151,3 +151,20 @@ def test_parallel_jobs_match_sequential_output(tmp_path: Path, capsys) -> None:
     assert [line.split(":")[0] for line in sequential.splitlines() if ":" in line and not line.startswith("CBP_")] == [
         line.split(":")[0] for line in parallel.splitlines() if ":" in line and not line.startswith("CBP_")
     ]
+
+
+@pytest.mark.parametrize("version", ["0.1.0rc1", "0.1.0", "1.5.1"])
+def test_gate_report_version_accepts_pep440(tmp_path: Path, version: str) -> None:
+    root = _repo(tmp_path)
+    report = root / "report.json"
+    assert _run(root, "--version", version, "--report-json", str(report)) == 0
+    data = json.loads(report.read_text(encoding="utf-8"))
+    assert data["producer_id"] == "cbp"
+    assert data["version"] == ("v" + version if not version.startswith("v") else version)
+
+
+@pytest.mark.parametrize("version", ["1.2", "1.2.3.4.5.6.7", "not-a-version"])
+def test_gate_report_version_rejects_invalid(tmp_path: Path, version: str) -> None:
+    root = _repo(tmp_path)
+    report = root / "report.json"
+    assert _run(root, "--version", version, "--report-json", str(report)) == 2

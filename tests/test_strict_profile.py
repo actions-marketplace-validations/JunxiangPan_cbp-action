@@ -15,8 +15,15 @@ def _root(tmp: Path) -> Path:
     (tmp / "tests/hostile/corpus.json").write_text(
         json.dumps([{"id": str(i), "expect": "FAIL"} for i in range(50)]), encoding="utf-8"
     )
-    (tmp / "docs/1.4.0").mkdir(parents=True)
-    (tmp / "docs/1.4.0/SBOM.json").write_text(
+    (tmp / "docs/1.5.0").mkdir(parents=True)
+    report = tmp / "docs/1.5.0/mutation-report.json"
+    report.write_text(json.dumps({"score": 0.96, "changed_code_score": 0.95}), encoding="utf-8")
+    (tmp / "docs/1.5.0/mutation-report.json.sha256").write_text(
+        __import__("hashlib").sha256(report.read_bytes()).hexdigest() + "  mutation-report.json\n",
+        encoding="utf-8",
+    )
+    (tmp / "docs/1.5.0").mkdir(parents=True, exist_ok=True)
+    (tmp / "docs/1.5.0/SBOM.json").write_text(
         json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "x"}]}), encoding="utf-8"
     )
     (tmp / ".github/workflows").mkdir(parents=True)
@@ -58,7 +65,7 @@ def test_strict_passes_with_all_evidence(tmp_path: Path, monkeypatch, capsys) ->
     assert report["passed"] is True
     assert {item["name"] for item in report["checks"]} >= {
         "gates_sha256", "mutation", "hostile_corpus", "fuzz", "action_pins",
-        "lockfile", "tag_immutability", "windows", "sbom", "provenance",
+        "lockfile", "tag_immutability", "windows", "sbom", "provenance", "target_mutation",
     }
 
 

@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.5.2 — 2026-11-12
+
+- Fixes `cbp gate --version`: PEP 440 prereleases such as `0.1.0rc1` are now
+  accepted by the gate report generator, matching the manifest/report schema.
+- Adds tests for `0.1.0rc1`, `0.1.0`, `1.5.1` and invalid versions.
+- Adds a real CBP gate report for CBF 0.1.0rc1 with `producer_id: cbp`
+  (no CBF-side translation), plus the resulting subject manifest and hashes.
+- Frozen schema, exit codes, 20% skip and CBP-BODY-001 are unchanged.
+
+## 1.5.1 — 2026-11-12
+
+- Manifest/report version validation accepts PEP 440 prereleases such as
+  `0.1.0rc1`; prereleases are preserved, not renamed to a stable version.
+- Adds the opt-in `--semantic-claims` gate: program validation always runs
+  first; local/cloud are mutually exclusive; cloud requires explicit consent
+  and receives redacted content only; no evidence is REVIEW/FAIL, subjective
+  claims are ADVISORY.
+- Includes a CBF 0.1.0rc1 subject manifest generated without modifying CBF
+  artifacts.
+- Default CBP 1.5.0 behavior, frozen schema, exit codes, 20% skip and
+  CBP-BODY-001 are unchanged.
+
+## 1.5.0 — 2026-11-11
+
+- Adds opt-in `--target-mutation`: configurable command/report/threshold,
+  report SHA256, changed-code score; strict profile fails exit 3.
+- Adds opt-in `--test-quality`: no-assertion tests, `assert True`, empty skips,
+  deleted tests; Python AST + generic language adapter.
+- Adds opt-in `--ai-evidence`: JSON claims with file/line/command/hash checks;
+  contradictions with coverage/mutation FAIL; no evidence is ADVISORY;
+  subjective claims are ADVISORY.
+- CBP remains independent of CBE (no import, no install requirement).
+- Default CBP 1.4.0 behavior, frozen schema, exit codes, 20% skip and
+  CBP-BODY-001 are unchanged.
+- Not released, not tagged, not published.
+
 ## 1.4.0 — 2026-11-11 (development)
 
 - Adds the opt-in `--profile strict` evidence profile. The default 1.3.2 path

@@ -22,6 +22,7 @@ from typing import Any
 
 from . import report_schema
 from .body_hash import base_body_bytes, canonical_body_hash
+from .versioning import normalize_version as _normalize_version
 
 BASE_MARKER = b"<!-- CBC-EVIDENCE-BEGIN -->"
 IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -47,12 +48,10 @@ def base_body(data: bytes) -> bytes:
 
 
 def normalize_version(value: str) -> str:
-    text = str(value).strip()
-    if text.startswith(("v", "V")):
-        text = text[1:]
-    if not re.fullmatch(r"\d+\.\d+\.\d+", text):
-        raise ManifestError(f"version must look like X.Y.Z, got {value!r}")
-    return "v" + text
+    try:
+        return _normalize_version(value)
+    except ValueError as exc:
+        raise ManifestError(str(exc)) from exc
 
 
 def _identifier(value: str, label: str) -> str:

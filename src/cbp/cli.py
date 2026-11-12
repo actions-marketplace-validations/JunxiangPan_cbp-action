@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import baseline, binary_gate, suppression, cbc_event, claims_gate, comment_gate, coverage_gate, custom_rules, dependency_gate, docs_gate, encoding_gate, errata, report_parser, report_schema, sarif, upgrade_gate, verify_release
 from .config import SCHEMA_VERSION, load_config
+from .versioning import normalize_version
 
 
 def _init(argv: list[str]) -> int:  # pragma: no cover - exercised via subprocess CLI
@@ -205,13 +206,37 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
     parser.add_argument("--identity-regexp", default="")
     parser.add_argument("--oidc-issuer", default="https://token.actions.githubusercontent.com")
     parser.add_argument("--tags-expected", default="docs/tags-expected.json")
-    parser.add_argument("--sbom", default="docs/1.4.0/SBOM.json")
+    parser.add_argument("--sbom", default="docs/1.5.0/SBOM.json")
     parser.add_argument("--mutation-report", default="docs/1.3.0/MUTATION_REPORT.md")
     parser.add_argument("--hostile-corpus", default="tests/hostile/corpus.json")
     parser.add_argument("--gate-manifest", default="quality/GATES.sha256")
     parser.add_argument("--strict-lockfile", default="requirements-test.lock")
     parser.add_argument("--strict-installer", default="install-test.sh")
     parser.add_argument("--strict-report", default="strict-profile.json")
+    parser.add_argument("--target-mutation", action="store_true")
+    parser.add_argument("--mutation-command", default="")
+    parser.add_argument("--target-mutation-report", default="mutation-report.json")
+    parser.add_argument("--mutation-threshold", type=float, default=0.95)
+    parser.add_argument("--changed-code-score", type=float, default=0.90)
+    parser.add_argument("--mutation-report-sha256", default="")
+    parser.add_argument("--mutation-timeout", type=int, default=300)
+    parser.add_argument("--test-quality", action="store_true")
+    parser.add_argument("--test-paths", action="append", default=[])
+    parser.add_argument("--test-language", choices=("python", "generic"), default="python")
+    parser.add_argument("--test-baseline", default="")
+    parser.add_argument("--test-quality-report", default="")
+    parser.add_argument("--ai-evidence", action="store_true")
+    parser.add_argument("--ai-evidence-file", default="ai-evidence.json")
+    parser.add_argument("--ai-coverage-json", default="")
+    parser.add_argument("--ai-mutation-report", default="")
+    parser.add_argument("--ai-evidence-report", default="")
+    parser.add_argument("--semantic-claims", action="store_true")
+    parser.add_argument("--semantic-claims-file", default="semantic-claims.json")
+    parser.add_argument("--semantic-mode", choices=("program", "local", "cloud"), default="program")
+    parser.add_argument("--semantic-no-evidence", choices=("review", "fail"), default="review")
+    parser.add_argument("--semantic-cloud-consent", action="store_true")
+    parser.add_argument("--semantic-backend-command", default="")
+    parser.add_argument("--semantic-report", default="")
     parser.add_argument("--v12", action="store_true")
     parser.add_argument("--v12-report", default="")
     parser.add_argument("--v12-only", default="")
@@ -332,6 +357,60 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
             installer=Path(args.strict_installer),
             report=Path(args.strict_report),
         ))
+
+    if args.target_mutation:
+        from .target_mutation import MutationOptions, run as mutation_run
+        result = mutation_run(MutationOptions(
+            root=Path(args.root), report=Path(args.target_mutation_report),
+            command=args.mutation_command, threshold=args.mutation_threshold,
+            changed_code_threshold=args.changed_code_score,
+            expected_sha256=args.mutation_report_sha256,
+            timeout_seconds=args.mutation_timeout,
+        ))
+        print(json.dumps(result, ensure_ascii=False))
+        return report_schema.EXIT_GATE if result["status"] == "FAIL" else report_schema.EXIT_PASS
+
+    if args.test_quality:
+        from .test_quality import TestQualityOptions, run as quality_run
+        result = quality_run(TestQualityOptions(
+            root=Path(args.root), paths=tuple(args.test_paths or ["tests"]),
+            language=args.test_language,
+            baseline=Path(args.test_baseline) if args.test_baseline else None,
+        ))
+        if args.test_quality_report:
+            Path(args.test_quality_report).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False))
+        return report_schema.EXIT_GATE if result["status"] == "FAIL" else report_schema.EXIT_PASS
+
+    if args.ai_evidence:
+        from .ai_evidence import AIEvidenceOptions, run as ai_run
+        result = ai_run(AIEvidenceOptions(
+            root=Path(args.root), claims=Path(args.ai_evidence_file),
+            coverage_json=Path(args.ai_coverage_json) if args.ai_coverage_json else None,
+            mutation_report=Path(args.ai_mutation_report) if args.ai_mutation_report else None,
+        ))
+        if args.ai_evidence_report:
+            Path(args.ai_evidence_report).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False))
+        return report_schema.EXIT_GATE if result["status"] == "FAIL" else report_schema.EXIT_PASS
+
+    if args.semantic_claims:
+        from .semantic_claims import SemanticClaimsError, SemanticClaimsOptions, run as semantic_run
+        try:
+            result = semantic_run(SemanticClaimsOptions(
+                root=Path(args.root), claims=Path(args.semantic_claims_file),
+                mode=args.semantic_mode, no_evidence=args.semantic_no_evidence,
+                cloud_consent=args.semantic_cloud_consent,
+                backend_command=args.semantic_backend_command,
+            ))
+        except SemanticClaimsError as exc:
+            print(json.dumps({"gate": "semantic-claims", "status": "FAIL",
+                              "error": str(exc)}, ensure_ascii=False))
+            return report_schema.EXIT_INPUT
+        if args.semantic_report:
+            Path(args.semantic_report).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False))
+        return report_schema.EXIT_GATE if result["status"] == "FAIL" else report_schema.EXIT_PASS
 
     if args.v12:
         from . import v12_rules
@@ -639,12 +718,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - exercised 
                               "error": f"invalid --producer-id {report_producer_id!r}"}, ensure_ascii=False))
             return report_schema.EXIT_INPUT
         if args.version:
-            raw_version = args.version.lstrip("vV")
-            if not re.fullmatch(r"\d+\.\d+\.\d+", raw_version):
+            try:
+                report_version = normalize_version(args.version)
+            except ValueError as exc:
                 print(json.dumps({"gate_status": "FAIL", "exit_code": report_schema.EXIT_INPUT,
-                                  "error": f"invalid --version {args.version!r}"}, ensure_ascii=False))
+                                  "error": f"invalid --version {args.version!r}: {exc}"}, ensure_ascii=False))
                 return report_schema.EXIT_INPUT
-            report_version = "v" + raw_version
         else:
             report_version = "v" + str(getattr(cfg, "release_version", "") or "0.0.0").lstrip("v")
         report = {

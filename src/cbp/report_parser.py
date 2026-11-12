@@ -256,7 +256,7 @@ def _parse_cbe(data: dict[str, Any], source: str, observed: int | None) -> Parse
         raise ReportError(f"{source}: producer_id must be 'cbe' for a CBE report")
     for name in ("version", "tag"):
         if not isinstance(data[name], str) or not schema.VERSION_PATTERN.fullmatch(data[name]) or not data[name].startswith("v"):
-            raise ReportError(f"{source}: {name} must look like vX.Y.Z")
+            raise ReportError(f"{source}: {name} must look like a PEP 440 vX.Y.Z version")
     status = _required_status(data, source, data.get("exit_code"))
     exit_code = _check_exit(data, status, source, observed)
     applicable, skip, ratio = _require_ratio(
@@ -333,7 +333,7 @@ def _parse_gate_report(
     if data["producer_id"] != schema.PRODUCER_ID:
         raise ReportError(f"{source}: producer_id must be {schema.PRODUCER_ID!r}")
     if not isinstance(data["version"], str) or not schema.VERSION_PATTERN.fullmatch(data["version"]):
-        raise ReportError(f"{source}: version must look like vX.Y.Z")
+        raise ReportError(f"{source}: version must look like a PEP 440 vX.Y.Z version")
     scope_problems = _scope_repository_problems(
         data, source,
         require_body_scope=require_body_scope,

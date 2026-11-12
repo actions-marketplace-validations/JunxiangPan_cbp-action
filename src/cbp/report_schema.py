@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import re
 from enum import Enum
+
+from .versioning import PEP440_PATTERN
 from typing import Any
 
 CONTRACT_VERSION = "v1.7"
@@ -34,7 +36,7 @@ SKIP_RATIO_EPSILON = 1e-9
 #: §5.2: hashes are bare 64-character lowercase hex. A sha256: prefix is an
 #: input error and must not be stripped.
 HASH_PATTERN = re.compile(r"^[a-f0-9]{64}$")
-VERSION_PATTERN = re.compile(r"^v?[0-9]+\.[0-9]+\.[0-9]+$")
+VERSION_PATTERN = PEP440_PATTERN
 
 #: F3 forced gates for package_type=cbp. They may never be SKIPPED.
 FORCED_GATES = ("claims", "binary", "encoding", "docs", "custom")
@@ -286,7 +288,7 @@ def validate_manifest(
         problems.append("producer_id: a non-empty string is required")
     version = manifest.get("version")
     if "version" in manifest and (not isinstance(version, str) or not VERSION_PATTERN.fullmatch(version)):
-        problems.append("version: must look like vX.Y.Z")
+        problems.append("version: must look like a PEP 440 X.Y.Z version (prerelease allowed)")
     if "body_hash_scope" in manifest:
         problem = body_hash_scope_problem(manifest["body_hash_scope"])
         if problem:

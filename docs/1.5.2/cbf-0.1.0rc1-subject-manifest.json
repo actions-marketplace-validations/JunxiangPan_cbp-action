@@ -1,0 +1,64 @@
+{
+  "applicable_gate_count": 1,
+  "artifact_hashes": {
+    "cbf-0.1.0rc1-py3-none-any.whl": "3c8faa174fdfa5a6fcd69157f566dde7ac2b11bbd4d164b2ecb7badbe8190060"
+  },
+  "blocking_skip": false,
+  "body_hash_scope": "base",
+  "evidence_sha256": "d1f296733f5b4ec3472a99dc1253f11ac4884975eb5b82583c6d1248c07681fe",
+  "gate_status": "PASS",
+  "gates": [
+    {
+      "name": "claims",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "binary",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "encoding",
+      "reason": "",
+      "status": "PASS"
+    },
+    {
+      "name": "docs",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "custom",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "coverage",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "dependency",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "comments",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    },
+    {
+      "name": "upgrade",
+      "reason": "disabled",
+      "status": "SKIPPED"
+    }
+  ],
+  "package_id": "cbf",
+  "producer_id": "cbp",
+  "release_body_hash": "29b4f9e77843fe2bef19ffd76f93bc9a81df5035250154437781bda8d6ea72f0",
+  "schema_version": "1",
+  "skip_count": 0,
+  "skip_ratio": 0.0,
+  "version": "v0.1.0rc1"
+}

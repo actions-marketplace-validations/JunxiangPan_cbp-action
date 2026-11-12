@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import artifact_integrity, dependency_gate, hostile_input, provenance
+from . import artifact_integrity, dependency_gate, hostile_input, provenance, target_mutation
 from .config import GateConfig
 
 
@@ -30,13 +30,17 @@ class StrictOptions:
     identity_regexp: str
     oidc_issuer: str = "https://token.actions.githubusercontent.com"
     tags_expected: Path = Path("docs/tags-expected.json")
-    sbom: Path = Path("docs/1.4.0/SBOM.json")
+    sbom: Path = Path("docs/1.5.0/SBOM.json")
     mutation_report: Path = Path("docs/1.3.0/MUTATION_REPORT.md")
     hostile_corpus: Path = Path("tests/hostile/corpus.json")
     gate_manifest: Path = Path("quality/GATES.sha256")
     lockfile: Path = Path("requirements-test.lock")
     installer: Path = Path("install-test.sh")
     report: Path = Path("strict-profile.json")
+    mutation_report: Path = Path("docs/1.3.0/MUTATION_REPORT.md")
+    target_mutation_report: Path = Path("docs/1.5.0/mutation-report.json")
+    mutation_threshold: float = 0.95
+    changed_code_threshold: float = 0.90
 
 
 def _gate_manifest_problems(manifest: Path, root: Path) -> list[str]:
@@ -106,7 +110,18 @@ def run(options: StrictOptions) -> int:
     except (OSError, ValueError) as exc:
         add("gates_sha256", False, str(exc))
 
-    # 2. Mutation evidence
+    # 2. Target-mutation evidence (strict: failure is exit 3)
+    try:
+        mutation = target_mutation.run(target_mutation.MutationOptions(
+            root=root, report=options.target_mutation_report,
+            threshold=options.mutation_threshold,
+            changed_code_threshold=options.changed_code_threshold,
+        ))
+        add("target_mutation", mutation["status"] == "PASS", json.dumps(mutation, ensure_ascii=False))
+    except Exception as exc:
+        add("target_mutation", False, str(exc))
+
+    # 3. Mutation evidence
     try:
         text = (root / options.mutation_report).read_text(encoding="utf-8")
         match = re.search(r"recall:\s*([0-9.]+)%", text)
@@ -190,7 +205,7 @@ def run(options: StrictOptions) -> int:
         "profile": "strict",
         "passed": passed,
         "checks": checks,
-        "note": "opt-in profile; the default CBP 1.3.2 behavior is unchanged",
+        "note": "opt-in profile; the default CBP 1.4.0 behavior is unchanged",
     }
     out = root / options.report
     out.parent.mkdir(parents=True, exist_ok=True)
